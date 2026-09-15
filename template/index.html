@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>easyedit</title>
+<style>
+@font-face { font-family: EECaption; src: url('fonts/Montserrat.ttf'); font-weight: 100 900; }
+@font-face { font-family: EEDisplay; src: url('fonts/Anton.ttf'); }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#footage { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
+#fx { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="dirblur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur id="dirblurNode" stdDeviation="0 0"/>
+    </filter>
+  </defs>
+</svg>
+<main id="stage" data-composition-id="easyedit" data-start="0" data-duration="__DURATION__"
+      data-width="1920" data-height="1080" data-fps="__FPS__" data-no-timeline>
+  <video id="footage" class="clip" src="footage.mp4" data-start="0" data-duration="__DURATION__"
+         data-media-start="__MEDIA_START__" data-track-index="0" muted playsinline preload="auto"></video>
+  <canvas id="fx" class="clip" width="1920" height="1080" data-start="0" data-duration="__DURATION__"
+          data-track-index="1"></canvas>
+</main>
+<script>window.SEGMENT_START = __SEGMENT_START__;</script>
+<script src="edit.js"></script>
+<script src="film.js"></script>
+</body>
+</html>

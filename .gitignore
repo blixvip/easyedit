@@ -1,0 +1,6 @@
+node_modules/
+jobs/
+.cache/
+__pycache__/
+*.pyc
+models/

@@ -1,0 +1,11 @@
+{
+  "name": "easyedit",
+  "version": "0.1.0",
+  "description": "Type a movie name, get a captioned speech + beat-cut montage fan edit",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "hyperframes": "0.8.40"
+  }
+}
