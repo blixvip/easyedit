@@ -50,7 +50,7 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
         seg = G[a:b]
         bright, contrast = float(seg.mean()), float(seg.std())
         dark_frac = float((seg < 22).mean())
-        if bright < 28 or contrast < 20 or dark_frac > 0.72 or bright > 225:
+        if bright < 18 or contrast < 14 or dark_frac > 0.85 or bright > 225:  # loose: horror/noir films live in the dark
             continue
         motion = float(np.abs(np.diff(seg, axis=0)).mean()) if len(seg) > 1 else 0.0
         mid = (a + b) // 2
@@ -107,6 +107,28 @@ def rank(analyses: list[dict]) -> list[dict]:
     return pool
 
 
+def shot_id(analyses: list[dict], s: dict) -> str:
+    return f"{Path(analyses[s['src']]['source']).stem}@{s['start']:.2f}"
+
+
+def curate(pool: list[dict], analyses: list[dict], cur: dict) -> list[dict]:
+    """Apply a job's curate.json: drop `exclude` ids, put `pin` ids first (in order), mark `hero`."""
+    ids = {shot_id(analyses, s): s for s in pool}
+    for key in [*cur.get("exclude", []), *cur.get("pin", []), *([cur["hero"]] if cur.get("hero") else [])]:
+        if key not in ids:
+            log(f"curate: unknown shot {key}")
+    drop = set(cur.get("exclude", []))
+    pinned = [ids[k] for k in cur.get("pin", []) if k in ids and k not in drop]
+    rest = [s for s in pool if shot_id(analyses, s) not in drop and not any(s is p for p in pinned)]
+    out = pinned + rest
+    for s in out:
+        s["hero"] = shot_id(analyses, s) == cur.get("hero")
+        s.pop("pin", None)
+    for rank_, s in enumerate(pinned):
+        s["pin"] = rank_
+    return out
+
+
 def _similar(a: dict, b: dict) -> bool:
     x, y = np.array(a["thumb"]), np.array(b["thumb"])
     x, y = x - x.mean(), y - y.mean()
@@ -116,7 +138,8 @@ def _similar(a: dict, b: dict) -> bool:
 def select(pool: list[dict], durations: list[float], hero_len: float) -> tuple[list[dict], dict | None]:
     """Choose shots for each montage slot (in slot order) plus one hero outro shot."""
     chosen: list[dict] = []
-    hero = next((s for s in pool if s["end"] - s["start"] >= hero_len and s["face"]), None) \
+    hero = next((s for s in pool if s.get("hero")), None) \
+        or next((s for s in pool if s["end"] - s["start"] >= hero_len and s["face"]), None) \
         or next((s for s in pool if s["end"] - s["start"] >= hero_len), None)
     taken = [hero] if hero else []
     need = len(durations)
@@ -130,7 +153,8 @@ def select(pool: list[dict], durations: list[float], hero_len: float) -> tuple[l
     if not chosen:
         return [], hero
     # best `need` shots, then story order (source, time) so the montage flows
-    picks = sorted(chosen[:need], key=lambda s: (s["src"], s["start"]))
+    # pinned shots (curate.json) keep their hand-picked order
+    picks = sorted(chosen[:need], key=lambda s: (s.get("pin", 1e9), s["src"], s["start"]))
     spare = chosen[need:]
     slots: list[dict] = []
     for i, d in enumerate(durations):

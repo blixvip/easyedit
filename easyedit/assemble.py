@@ -73,7 +73,7 @@ def track_faces(src: Path, start: float, dur: float, crop, size, fd: FaceDetecto
 
 def _vf(crop, fps: int) -> str:
     parts = ["crop=%d:%d:%d:%d" % tuple(crop)] if crop else []
-    parts += [f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos", f"crop={W}:{H}",
+    parts += [f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos", f"crop={W}:{H}:(iw-{W})/2:0",  # tall sources: keep the top (faces), drop the bottom (watermarks)
               f"fps={fps}", "setsar=1", "format=yuv420p"]
     return ",".join(parts)
 

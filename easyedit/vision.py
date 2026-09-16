@@ -56,7 +56,7 @@ def letterbox(path: Path, duration: float) -> tuple[int, int, int, int] | None:
     step = max((hi - lo) / 30, 0.5)
     row_cov, col_cov = [], []
     for _, img in frames(path, 1 / step, 320, lo, hi - lo):
-        lit = img.max(axis=2) > 40
+        lit = img.max(axis=2) > 20  # bars are ~0-16; 40 dropped whole regions of dark films
         row_cov.append(lit.mean(axis=1))
         col_cov.append(lit.mean(axis=0))
     if len(row_cov) < 4:
@@ -119,5 +119,5 @@ def cover_map(src_w: int, src_h: int, out_w: int, out_h: int):
     """Map normalized source coords -> output px under object-fit: cover."""
     scale = max(out_w / src_w, out_h / src_h)
     dw, dh = src_w * scale, src_h * scale
-    ox, oy = (out_w - dw) / 2, (out_h - dh) / 2
+    ox, oy = (out_w - dw) / 2, 0.0  # top-anchored, matching assemble._vf
     return lambda nx, ny: (ox + nx * dw, oy + ny * dh)

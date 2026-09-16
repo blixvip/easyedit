@@ -14,7 +14,7 @@ from . import assemble, beats, fetch, plan as planner, quote, render, shots, tra
 from .util import JOBS, log, need, read_json, slugify, write_json
 from .vision import FaceDetector
 
-BUILD_VERSION = 2  # bump when assemble output changes
+BUILD_VERSION = 3  # bump when assemble output changes
 
 
 def parse(argv=None):
@@ -99,12 +99,16 @@ def main(argv=None) -> None:
     fd = FaceDetector()
     analyses = [shots.analyze(f, job / "work" / f"shots-{f.stem}.json", fd) for f in montage_files]
     pool = shots.rank(analyses)
+    curate_file = job / "curate.json"
+    curation = read_json(curate_file) if curate_file.exists() else {}
+    if curation:
+        pool = shots.curate(pool, analyses, curation)
     log(f"shots: {len(pool)} candidates across {len(analyses)} source(s)")
     music_beats = beats.analyze(music_files[0], job / "work" / f"beats-{music_files[0].stem}.json")
 
     key = hashlib.sha256(json.dumps([q, plan, str(music_files[0]), a.fps, a.montage_length,
                                      a.hero_length, BUILD_VERSION,
-                                     [(an["source"], an["crop"], len(an["shots"])) for an in analyses]],
+                                     [(an["source"], an["crop"], len(an["shots"])) for an in analyses], curation],
                                     sort_keys=True, default=str).encode()).hexdigest()
     key_file = job / "work" / "build.key"
     edit_js = job / "render" / "edit.js"
