@@ -20,10 +20,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from . import doctor
 from .util import JOBS, ROOT, probe, read_json, slugify
 
 PORT = int(os.environ.get("EASYEDIT_PORT", "4331"))
 WEB = Path(__file__).parent / "web"
+mimetypes.add_type("image/svg+xml", ".svg")  # missing from the Windows registry on some machines
 
 # log line -> (stage label, fraction of the run that is done once it appears)
 STAGES = [
@@ -43,6 +45,45 @@ STAGES = [
 
 _runs: dict[str, dict] = {}
 _lock = threading.Lock()
+_setup: dict = {"report": None, "checked": 0.0, "busy": False}
+
+
+def setup_report(force: bool = False) -> dict:
+    """The doctor report, refreshed in the background (the tool checks take a few seconds)."""
+    def work():
+        try:
+            _setup["report"] = doctor.report()
+            _setup["checked"] = time.time()
+        finally:
+            _setup["busy"] = False
+    stale = time.time() - _setup["checked"] > 60
+    if (force or stale or _setup["report"] is None) and not _setup["busy"]:
+        _setup["busy"] = True
+        threading.Thread(target=work, daemon=True).start()
+    return {"report": _setup["report"], "checking": _setup["busy"]}
+
+
+LOGIN = {"claude": ["claude", "auth", "login"], "codex": ["codex", "login"]}
+
+
+def connect(provider: str) -> dict:
+    """Open a terminal window running the provider's own sign-in; the browser flow happens there."""
+    argv = LOGIN.get(provider)
+    if not argv:
+        raise ValueError(f"unknown account: {provider}")
+    if not shutil.which(argv[0]):
+        raise ValueError(f"{argv[0]} isn't installed yet")
+    cmd = " ".join(argv)
+    if os.name == "nt":
+        subprocess.Popen(["cmd", "/c", "start", "easyedit sign-in", "cmd", "/k", cmd])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["osascript", "-e", f'tell application "Terminal" to do script "{cmd}"'])
+    else:
+        term = next((t for t in ("x-terminal-emulator", "gnome-terminal", "konsole", "xterm") if shutil.which(t)), None)
+        if not term:
+            raise ValueError(f"no terminal found; run `{cmd}` yourself")
+        subprocess.Popen([term, "-e", cmd])
+    return {"opened": True, "command": cmd}
 
 
 def job_dirs() -> list[Path]:
@@ -257,6 +298,15 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             return self._send(200, (WEB / "index.html").read_bytes(), "text/html; charset=utf-8",
                               {"Cache-Control": "no-store"})
+        if path.startswith("/assets/"):
+            target = (WEB / path.lstrip("/")).resolve()
+            if target.is_file() and (WEB / "assets").resolve() in target.parents:
+                return self._file(target)
+            return self._send(404, b"not found", "text/plain")
+        if path == "/favicon.ico":
+            return self._file(WEB / "assets" / "icon.svg")
+        if path == "/api/setup":
+            return self._json(setup_report(force="refresh" in (urlparse(self.path).query or "")))
         if path == "/api/jobs":
             return self._json({"jobs": [job_info(j) for j in job_dirs()]})
         if path.startswith("/api/log/"):
@@ -287,6 +337,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/new":
                 return self._json(start_job(body))
+            if path == "/api/connect":
+                return self._json(connect(body.get("provider", "")))
             if path == "/api/stop":
                 return self._json({"stopped": stop_job(body.get("slug", ""))})
             if path == "/api/reveal":
@@ -312,7 +364,9 @@ def main() -> None:
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     url = f"http://127.0.0.1:{PORT}"
     print(f"easyedit web: {url}", flush=True)
-    threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    setup_report()
+    if "--no-browser" not in sys.argv:
+        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

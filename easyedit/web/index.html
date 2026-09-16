@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>easyedit</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <style>
   :root {
     --bg: #0b0c0f; --panel: #14161b; --panel-2: #1b1e25; --line: #272b34;
@@ -14,10 +15,42 @@
     margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
     padding: 28px 22px 80px; max-width: 1180px; margin-inline: auto;
   }
-  header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; }
-  h1 { font-size: 26px; letter-spacing: -0.5px; margin: 0; }
-  h1 span { color: var(--accent); }
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  h1 { margin: 0; line-height: 0; }
+  h1 img { height: 34px; width: auto; display: block; }
   header p { color: var(--dim); margin: 0; font-size: 13px; }
+  nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+  nav a { color: var(--dim); text-decoration: none; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; }
+  nav a:hover { color: var(--text); background: var(--panel); }
+  a { color: var(--accent); }
+  .notice { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px;
+            background: #1d1a0e; border: 1px solid #3a3722; color: #e9dfb4; border-radius: 12px; padding: 10px 14px;
+            font-size: 13.5px; }
+  .notice[hidden] { display: none; }
+  .notice a { white-space: nowrap; font-weight: 600; }
+  .writer { margin-left: 14px; font-size: 13px; color: var(--dim); }
+  .writer b { color: var(--good); font-weight: 600; }
+  .section-lead { color: var(--dim); margin: -4px 0 14px; font-size: 14px; max-width: 760px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .acct { display: flex; flex-direction: column; gap: 8px; }
+  .acct .row, .bot .row { justify-content: space-between; }
+  .acct h3, .bot h3, .card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #4a505c; display: inline-block; margin-right: 9px; }
+  .dot.on { background: var(--good); box-shadow: 0 0 10px #8dff8a66; }
+  .acct p, .bot p { margin: 0; color: var(--dim); font-size: 13.5px; }
+  .acct .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
+  .acct button, .bot button { padding: 8px 13px; font-size: 13px; border-radius: 8px; }
+  code { font: 12.5px ui-monospace, Consolas, monospace; background: #0e1014; border: 1px solid var(--line);
+         border-radius: 6px; padding: 1px 6px; color: #d6dbe4; }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .checks li { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; }
+  .checks .st { width: 18px; flex: none; text-align: center; font-weight: 700; }
+  .checks .ok { color: var(--good); } .checks .bad { color: var(--bad); }
+  .checks .d { color: var(--dim); }
+  .bot { display: flex; flex-direction: column; gap: 10px; }
+  .bot pre { max-height: none; margin: 0; flex: 1; overflow-wrap: anywhere; }
+  .step { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--accent); font-weight: 600; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
   .prompt { display: flex; gap: 10px; }
   input, select { background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
@@ -59,6 +92,7 @@
   .tile .actions button { padding: 7px 11px; font-size: 12.5px; border-radius: 8px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--accent);
           border: 1px solid #3a3722; background: #241f0f; border-radius: 99px; padding: 2px 9px; }
+  .pill.on { color: var(--good); border-color: #24402a; background: #122016; }
   .pill.err { color: var(--bad); border-color: #40222a; background: #26141a; }
   dialog { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 16px;
            padding: 0; max-width: min(1100px, 92vw); }
@@ -66,20 +100,32 @@
   dialog video { display: block; width: 100%; max-height: 74vh; background: #000; }
   dialog .bottom { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
   .empty-state { color: var(--dim); }
+  @media (max-width: 640px) {
+    body { padding: 20px 16px 60px; }
+    .prompt { flex-direction: column; }
+    nav { margin-left: -10px; width: 100%; }
+    .cols { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
-<body>
+<body id="top">
 <header>
-  <h1>easy<span>edit</span></h1>
+  <h1><img src="/assets/logo.svg" alt="easyedit"></h1>
   <p>type a movie, get a captioned speech + beat-cut montage</p>
+  <nav>
+    <a href="#top">Make</a><a href="#edits">Edits</a><a href="#connect">Connect</a><a href="#bot">Bot</a>
+    <a href="https://github.com/blixvip/easyedit" target="_blank" rel="noopener">GitHub</a>
+  </nav>
 </header>
+
+<div class="notice" id="notice" hidden></div>
 
 <div class="card">
   <form class="prompt" id="form">
     <input id="movie" placeholder="Movie name — e.g. Gladiator" autocomplete="off" autofocus>
     <button id="go">Make the edit</button>
   </form>
-  <button class="toggle" type="button" id="toggle">Options ▾</button>
+  <button class="toggle" type="button" id="toggle">Options ▾</button><span class="writer" id="writer"></span>
   <div class="opts" id="opts">
     <div><label>Speech scene (file, URL or search)</label><input id="speech" placeholder="auto"></div>
     <div><label>Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
@@ -97,9 +143,46 @@
   <div class="runs" id="runs"></div>
 </div>
 
-<h2>Edits</h2>
+<h2 id="edits">Edits</h2>
 <div class="grid" id="grid"></div>
 <p class="empty-state" id="empty" hidden>No edits yet. Type a movie name above — the first run downloads footage, so give it ~15 minutes.</p>
+
+<h2 id="connect">Connect</h2>
+<p class="section-lead">easyedit uses an AI account you already have to pick the scene, the quote and the song, so you don't need API keys. One account is enough. Without one it still makes an edit, using built-in heuristics.</p>
+<div class="cols" id="accounts"><div class="card empty-state">Checking your setup…</div></div>
+<div class="card" style="margin-top:14px">
+  <div class="row" style="justify-content:space-between;margin-bottom:12px">
+    <h3>This computer</h3>
+    <button class="ghost" id="recheck" style="padding:7px 12px;font-size:12.5px">Check again</button>
+  </div>
+  <ul class="checks" id="tools"><li class="d">Checking…</li></ul>
+</div>
+
+<h2 id="bot">Give it to your bot</h2>
+<p class="section-lead">Claude Code, Codex, or any agent that can use a terminal can make edits for you. Paste one of these into your bot. It uses the movie typed in the box at the top.</p>
+<div class="cols">
+  <div class="card bot">
+    <span class="step">New computer</span>
+    <h3>Install from GitHub</h3>
+    <p>The bot clones the repo, follows <a href="https://github.com/blixvip/easyedit/blob/main/AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a>, fixes its setup, then makes the edit.</p>
+    <pre id="promptInstall"></pre>
+    <div class="row"><span class="meta">any coding agent</span><button data-copy="promptInstall">Copy prompt</button></div>
+  </div>
+  <div class="card bot">
+    <span class="step">Already running</span>
+    <h3>Use this app</h3>
+    <p>For a bot on this computer. The edit starts here, so you can watch its progress on this page.</p>
+    <pre id="promptLocal"></pre>
+    <div class="row"><span class="meta">local API, port <span id="port"></span></span><button data-copy="promptLocal">Copy prompt</button></div>
+  </div>
+  <div class="card bot">
+    <span class="step">Claude Code</span>
+    <h3>Add it as a skill</h3>
+    <p>After this, any Claude Code session makes an edit when you type <code>/easyedit Gladiator</code>.</p>
+    <pre id="promptSkill"></pre>
+    <div class="row"><span class="meta">run in the easyedit folder</span><button data-copy="promptSkill">Copy command</button></div>
+  </div>
+</div>
 
 <dialog id="player">
   <video id="video" controls></video>
@@ -244,6 +327,92 @@ document.addEventListener('click', async e => {
 $('closePlayer').onclick = () => { $('video').pause(); $('player').close(); };
 $('player').addEventListener('close', () => { $('video').pause(); $('video').removeAttribute('src'); });
 
+// ---- connect + bot
+const REPO = 'https://github.com/blixvip/easyedit';
+let setup = null;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function accountCard(a) {
+  const short = a.name.split(' ')[0];
+  const action = a.connected
+    ? `<button class="ghost" data-connect="${a.id}">Switch account</button>`
+    : a.cli ? `<button data-connect="${a.id}">Connect ${esc(short)}</button>`
+            : `<button class="ghost" data-copytext="${esc(a.install)}">Copy install command</button>`;
+  const how = a.cli ? `Signs in with <code>${esc(a.login)}</code> in a new terminal window.`
+                    : `Install it with <code>${esc(a.install)}</code>, then connect.`;
+  return `<div class="card acct">
+    <div class="row"><h3><span class="dot ${a.connected ? 'on' : ''}"></span>${esc(a.name)}</h3>
+      <span class="pill ${a.connected ? 'on' : 'err'}">${a.connected ? 'connected' : 'not connected'}</span></div>
+    <p>${esc(a.detail)}</p>
+    <p>${how}</p>
+    <div class="actions">${action}</div>
+  </div>`;
+}
+
+function renderSetup() {
+  const r = setup && setup.report;
+  if (!r) return;
+  $('accounts').innerHTML = r.accounts.map(accountCard).join('');
+  $('tools').innerHTML = r.tools.map(t => `<li>
+    <span class="st ${t.ok ? 'ok' : 'bad'}">${t.ok ? '✓' : '✕'}</span>
+    <span><strong>${esc(t.name)}</strong> <span class="d">${esc(t.detail)}</span>
+    ${t.fix ? `<br><span class="d">Fix: <code>${esc(t.fix)}</code></span>` : ''}</span></li>`).join('');
+  $('writer').innerHTML = r.writer ? `writer: <b>${esc(r.writer)}</b>` : 'writer: heuristics';
+  const missing = r.tools.filter(t => !t.ok).map(t => t.name);
+  const msg = missing.length ? `Missing before you can render: ${missing.join(', ')}.`
+    : !r.writer ? 'Connect Claude or Codex so the AI picks the best scene, quote and song.' : '';
+  $('notice').hidden = !msg;
+  $('notice').innerHTML = msg ? `<span>${esc(msg)}</span><a href="#connect">Set up</a>` : '';
+}
+
+async function loadSetup(force) {
+  setup = await api('/api/setup' + (force ? '?refresh=1' : ''));
+  renderSetup();
+  renderPrompts();
+  if (setup.checking) setTimeout(() => loadSetup(false), 1500);
+}
+
+function renderPrompts() {
+  const movie = $('movie').value.trim() || 'Gladiator';
+  const origin = location.origin;
+  $('port').textContent = location.port || '80';
+  $('promptInstall').textContent =
+`Install easyedit from ${REPO}. Read its AGENTS.md first and follow it.
+Run "python -m easyedit.doctor" and fix anything it flags.
+Then make a fan edit of "${movie}" and tell me where the finished video is.`;
+  $('promptLocal').textContent =
+`easyedit is running at ${origin}.
+Start a fan edit of "${movie}": POST ${origin}/api/new with {"movie": "${movie}"}.
+Poll GET ${origin}/api/jobs every 30s until that job has a "video", then give me the file path.`;
+  const py = setup && setup.report ? setup.report.python : 'python';
+  $('promptSkill').textContent = `${/\s/.test(py) ? `"${py}"` : py} -m easyedit.skill install`;
+}
+$('movie').addEventListener('input', renderPrompts);
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const d = b.dataset;
+  if (d.copy || d.copytext) {
+    const text = d.copytext || $(d.copy).textContent;
+    try { await navigator.clipboard.writeText(text); } catch { return prompt('Copy this:', text); }
+    const was = b.textContent;
+    b.textContent = 'Copied';
+    setTimeout(() => (b.textContent = was), 1400);
+  } else if (d.connect) {
+    const res = await api('/api/connect', { provider: d.connect });
+    if (res.error) return alert(res.error);
+    b.textContent = 'Finish in the terminal window';
+  }
+});
+$('recheck').onclick = () => { $('tools').innerHTML = '<li class="d">Checking…</li>'; loadSetup(true); };
+let lastFocusCheck = 0;
+window.addEventListener('focus', () => {  // back from a sign-in window
+  if (Date.now() - lastFocusCheck > 15000) { lastFocusCheck = Date.now(); loadSetup(true); }
+});
+
+renderPrompts();
+loadSetup(false);
 refresh();
 setInterval(refresh, 3000);
 </script>

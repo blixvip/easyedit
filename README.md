@@ -1,6 +1,14 @@
-# easyedit
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="easyedit/web/assets/logo.svg">
+    <img alt="easyedit" src="easyedit/web/assets/logo-light.svg" height="72">
+  </picture>
+</p>
 
-![easyedit](docs/ui.png)
+<p align="center"><b>Type a movie. Get a captioned speech + beat-cut fan edit.</b><br>
+Local-first · no API keys · works with your AI bot</p>
+
+![easyedit web UI](docs/ui.png)
 
 Type a movie name and get a finished fan edit. It makes the kind that's all over social media: the film's best
 speech with animated word-by-word captions, then a fast montage cut to the beat of a song.
@@ -32,13 +40,36 @@ and the final encode faster. Everything else (fonts, the face model, Chrome for 
 run into `.cache/`.
 
 ```bash
-git clone https://github.com/wasely/easyedit && cd easyedit
+git clone https://github.com/blixvip/easyedit && cd easyedit
 npm install
 pip install -r requirements.txt
+python -m easyedit.doctor     # checks everything and tells you what to fix
 ```
 
-Optional LLM: log in to Claude Code (`claude`) or Codex (`codex login`). Without either you still get an edit,
-but it runs on heuristics.
+Connect an AI account so it can pick the scene, the quote and the song. One is enough, and there are no API keys:
+sign in to Claude Code (`claude auth login`) or Codex (`codex login`), or click **Connect** in the web UI. With no
+account connected you still get an edit, but it runs on heuristics.
+
+## Give it to your bot
+
+easyedit is built so an AI agent can run the whole thing for you, from install to curating the shots to the
+final render. Paste this into Claude Code, Codex or any agent that can use a terminal:
+
+```text
+Install easyedit from https://github.com/blixvip/easyedit. Read its AGENTS.md first and follow it.
+Run "python -m easyedit.doctor" and fix anything it flags.
+Then make a fan edit of "Gladiator" and tell me where the finished video is.
+```
+
+[`AGENTS.md`](AGENTS.md) is the agent's playbook. It covers setup, checking the quote, reading the shot contact
+sheets, writing `curate.json`, rendering, and checking the stills afterwards. For Claude Code there's also a skill:
+
+```bash
+python -m easyedit.skill install    # then: /easyedit Gladiator
+```
+
+The web UI's **Bot** section has these prompts ready to copy, with your movie filled in. A bot on the same
+computer can also drive the running app through its local API (`POST /api/new`, `GET /api/jobs`). See AGENTS.md.
 
 ## Web UI
 
@@ -46,9 +77,12 @@ but it runs on heuristics.
 python -m easyedit.web      # http://127.0.0.1:4331 (easyedit-web.cmd on Windows)
 ```
 
-A gallery of every edit you have made - thumbnail, length, the line it captions - plus a box to start a new
+A gallery of every edit you have made (thumbnail, length, the line it captions) plus a box to start a new
 one. Running jobs show a live stage/progress bar and their log, and can be stopped from the page. Click a
 thumbnail to watch the edit in the browser.
+
+**Connect** shows which AI accounts are signed in and checks this computer's tools. Its buttons open the sign-in
+for Claude or Codex. **Give it to your bot** has copy-ready prompts for an agent.
 
 ## Usage
 
@@ -83,6 +117,19 @@ Every stage caches its results in `jobs/<movie>/`: downloads, transcripts, shot 
 `quote.json` and `sources.json` (which pins the chosen downloads, since YouTube search results drift).
 Re-running is quick, and you can edit `quote.json` or `render/edit.js` by hand and render again.
 
+To hand-pick the montage, add `jobs/<movie>/curate.json`. Shot ids are `<source stem>@<start seconds>`, and
+they're listed in `work/shots-*.json`:
+
+```json
+{"pin": ["TaaDkbG3I7g@110.52", "ebjTAHwSWMw@73.60"], "exclude": ["TaaDkbG3I7g@32.77"], "hero": "ebjTAHwSWMw@163.10"}
+```
+
+To see the shots, run `python -m easyedit.sheet "<movie>"`. It writes `qa/candidates.jpg` (every shot, numbered),
+`qa/candidates.txt` (number → id) and `qa/footage.jpg` (the cut in order). Add `--final` to get stills from
+the rendered video.
+
+`pin` shots are used first, in that order. `exclude` shots are never used, and `hero` is the final black-and-white shot.
+
 Environment overrides: `EASYEDIT_CLAUDE_MODEL`, `EASYEDIT_WHISPER` (a faster-whisper model name),
 `EASYEDIT_PARALLEL` (render processes, default 2 - raise it if you have RAM to spare) and
 `EASYEDIT_ENCODER=x264` (the default uses NVENC when the GPU has it).
@@ -114,7 +161,8 @@ processes what you point it at or what it downloads into your local `jobs/` fold
 | Render dies on temp space | Disk capture needs ~9 MB per frame. easyedit already streams frames instead, so if you see this, something forced the old path - make sure `PRODUCER_FORCE_SCREENSHOT` is not set. |
 | Render is killed / the machine thrashes | Lower `EASYEDIT_PARALLEL` to 1. Each section is a separate Chrome. |
 | Captions stall on silence | The passage spans dead air. `MAX_GAP` in `quote.py` controls how much is allowed. |
-| Black bars or a channel watermark survive | `letterbox()` in `vision.py` keeps only rows lit across the frame; a very dark clip can defeat it. Crop the source yourself and pass it in. |
+| Black bars or a channel watermark survive | `letterbox()` in `vision.py` keeps only rows lit across the frame. Sources taller than 16:9 keep the top of the frame, so corner watermarks at the bottom get cropped off. If one still survives, exclude that shot in `curate.json` or crop the source yourself. |
+| The montage is weak or repetitive | Run `python -m easyedit.sheet "<movie>"`, then pin a sequence and exclude text cards in `curate.json`. |
 
 ## How it fits together
 
@@ -130,8 +178,13 @@ easyedit/
   beats.py      onset envelope, tempo, beat tracking, the drop
   assemble.py   frame-exact timeline, footage cut, ducked soundtrack, edit.js
   render.py     parallel HyperFrames sections, mux, delivery encode
-  web.py        the local web UI
+  web.py        the local web UI (web/index.html, web/assets/ logo + icon)
+  doctor.py     setup check: AI accounts + tools (used by the UI and by agents)
+  sheet.py      contact sheets for checking shots and the final render
+  skill.py      installs the Claude Code skill
 template/       index.html + film.js: every visual effect, as a function of time
+skills/         the /easyedit skill for Claude Code
+AGENTS.md       the playbook for AI agents
 ```
 
 MIT license.
