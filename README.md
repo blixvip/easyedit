@@ -1,5 +1,7 @@
 # easyedit
 
+![easyedit](docs/ui.png)
+
 Type a movie name and get a finished fan edit. It makes the kind that's all over social media: the film's best
 speech with animated word-by-word captions, then a fast montage cut to the beat of a song.
 
@@ -25,7 +27,9 @@ The finished video is saved to `jobs/<movie>/<movie>.mp4` as 1920×1080 at 60fps
 
 ## Setup
 
-Requirements: Python 3.10+, Node.js 22+, FFmpeg. An NVIDIA GPU is optional; it makes transcription faster.
+Requirements: Python 3.10+, Node.js 22+, FFmpeg on `PATH`. An NVIDIA GPU is optional: it makes transcription
+and the final encode faster. Everything else (fonts, the face model, Chrome for rendering) downloads on first
+run into `.cache/`.
 
 ```bash
 git clone https://github.com/wasely/easyedit && cd easyedit
@@ -99,5 +103,23 @@ cd jobs/<movie>/render && npx hyperframes preview
 
 Use footage and music you have the right to use. easyedit doesn't include any film or music content; it only
 processes what you point it at or what it downloads into your local `jobs/` folder.
+
+## How it fits together
+
+```
+easyedit/
+  __main__.py   CLI and the per-stage cache keys
+  plan.py       movie title  -> scene / montage / music queries, palette, grade
+  fetch.py      yt-dlp search + download (or your own files and URLs)
+  transcribe.py faster-whisper word timings
+  quote.py      the passage to caption, its lines and emphasis words
+  vision.py     frame sampling, picture-area detection, YuNet faces
+  shots.py      scene cuts and how edit-worthy each shot is
+  beats.py      onset envelope, tempo, beat tracking, the drop
+  assemble.py   frame-exact timeline, footage cut, ducked soundtrack, edit.js
+  render.py     parallel HyperFrames sections, mux, delivery encode
+  web.py        the local web UI
+template/       index.html + film.js: every visual effect, as a function of time
+```
 
 MIT license.
