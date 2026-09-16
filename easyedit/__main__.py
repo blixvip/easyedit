@@ -59,19 +59,32 @@ def main(argv=None) -> None:
         plan = planner.make_plan(a.movie, a.llm)
         write_json(plan_file, plan)
 
-    speech_files = fetch.resolve(a.speech, plan["speech_query"], dl / "speech", n=2, min_dur=20,
-                                 max_dur=600, cookies=a.cookies_from_browser)
-    montage_files = []
-    for spec in (a.montage or plan["montage_queries"][:2]):
-        try:
-            montage_files += fetch.resolve(spec, spec, dl / "montage", n=1, min_dur=60, max_dur=1500,
-                                           cookies=a.cookies_from_browser)
-        except Exception as e:
-            log(f"montage source skipped: {e}")
-    if not montage_files:
-        montage_files = speech_files
-    music_files = fetch.resolve(a.music, a.music or plan["music_query"], dl / "music", n=1, min_dur=60,
-                                max_dur=900, audio_only=True, cookies=a.cookies_from_browser)
+    # lock sources: YouTube search order drifts between runs, which would silently change the edit
+    src_file = job / "sources.json"
+    specs = {"speech": a.speech, "montage": a.montage, "music": a.music}
+    cached = read_json(src_file) if src_file.exists() and not a.fresh else None
+    if cached and cached.get("specs") == specs and all(
+            Path(f).exists() for k in ("speech", "montage", "music") for f in cached[k]):
+        speech_files, montage_files, music_files = ([Path(f) for f in cached[k]]
+                                                    for k in ("speech", "montage", "music"))
+        log("sources: reusing locked downloads")
+    else:
+        speech_files = fetch.resolve(a.speech, plan["speech_query"], dl / "speech", n=2, min_dur=20,
+                                     max_dur=600, cookies=a.cookies_from_browser)
+        montage_files = []
+        for spec in (a.montage or plan["montage_queries"][:2]):
+            try:
+                montage_files += fetch.resolve(spec, spec, dl / "montage", n=1, min_dur=60, max_dur=1500,
+                                               cookies=a.cookies_from_browser)
+            except Exception as e:
+                log(f"montage source skipped: {e}")
+        if not montage_files:
+            montage_files = speech_files
+        music_files = fetch.resolve(a.music, a.music or plan["music_query"], dl / "music", n=1, min_dur=60,
+                                    max_dur=900, audio_only=True, cookies=a.cookies_from_browser)
+        write_json(src_file, {"specs": specs, "speech": [str(f) for f in speech_files],
+                              "montage": [str(f) for f in montage_files],
+                              "music": [str(f) for f in music_files]})
 
     pick_file = job / "quote.json"
     clips = [transcribe.transcribe(f, job / "work" / f"words-{f.stem}.json", a.language) for f in speech_files]

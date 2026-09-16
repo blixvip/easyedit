@@ -151,7 +151,7 @@
 
   // ---------- captions ----------
   const CAP_Y = H * 0.61;
-  const SIZE = 58, GAP = 19;
+  const SIZE = 64, GAP = 20;
 
   function caption(t) {
     const line = E.captions.find(l => t >= l.start - 0.08 && t < l.end);
@@ -194,7 +194,9 @@
         ctx.strokeText(w.text, 0, 6 + 8 * e);
         ctx.restore();
       }
-      ctx.filter = `blur(${((1 - arrive) * 9 + (1 - exit) * 4).toFixed(2)}px)`;
+      // canvas blur is the single most expensive op here: only pay for it while a word is arriving
+      const soft = (1 - arrive) * 9 + (1 - exit) * 4;
+      if (soft > 0.15) ctx.filter = `blur(${soft.toFixed(2)}px)`;
       // readability shadow, then outline-first reveal, then fill with glow
       ctx.shadowColor = 'rgba(0,0,0,0.55)';
       ctx.shadowBlur = 14;
@@ -222,7 +224,7 @@
     ctx.save();
     ctx.translate(W / 2, H * 0.5);
     ctx.globalAlpha = q * fade;
-    ctx.filter = `blur(${((1 - q) * 10).toFixed(2)}px)`;
+    if (q < 0.99) ctx.filter = `blur(${((1 - q) * 10).toFixed(2)}px)`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
@@ -274,9 +276,9 @@
       ctx.fillRect(0, 0, W, H);
     }
 
+    // plain alpha, not 'overlay': this canvas is transparent, so a blend mode has nothing to blend with
     ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = 0.07;
+    ctx.globalAlpha = 0.05;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(grainTiles[Math.floor(t * FPS) % grainTiles.length], 0, 0, W, H);
     ctx.restore();

@@ -170,8 +170,8 @@ def build(job: Path, *, plan: dict, quote: dict, speech: Path, analyses: list[di
                  "end": round(line[-1]["end"] - s_start, 3),
                  "words": [{"text": w["text"], "t": round(w["start"] - s_start, 3), "role": w["role"]}
                            for w in line]} for line in quote["lines"]]
-    for a, b in zip(captions, captions[1:]):  # hold each line until the next arrives (max 0.7s)
-        a["end"] = round(min(b["start"], a["end"] + 0.7), 3)
+    for a, b in zip(captions, captions[1:]):  # hold each line until the next arrives (max 1.2s)
+        a["end"] = round(min(b["start"], a["end"] + 1.2), 3)
     captions[-1]["end"] = round(min(M, captions[-1]["end"] + 0.5), 3)
 
     edit = {

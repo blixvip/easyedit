@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
+import time
 import urllib.request
 from pathlib import Path
 
@@ -13,7 +15,7 @@ FONTS = {
     "Anton.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf",
 }
 CLI = ROOT / "node_modules" / "hyperframes" / "bin" / "hyperframes.mjs"
-SECTION = 16.0
+PARALLEL = int(os.environ.get("EASYEDIT_PARALLEL", "3"))
 
 
 def ensure_fonts(dest: Path) -> None:
@@ -39,55 +41,66 @@ def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str
     (render_dir / name).write_text(html, encoding="utf-8")
 
 
-def render(job: Path, edit: dict, out: Path, quality: str = "high", workers: str = os.environ.get("EASYEDIT_WORKERS", "4"),
+def render(job: Path, edit: dict, out: Path, quality: str = "high",
            only: tuple[float, float] | None = None) -> Path:
+    """Split the timeline into PARALLEL sections and render them concurrently.
+
+    Each hyperframes process runs in low-memory mode: one Chrome, frames streamed straight into
+    the encoder. Nothing large touches the temp dir (disk capture needs ~9 MB per 1080p frame),
+    and running sections side by side gets the parallelism back."""
     if not CLI.exists():
         raise SystemExit("hyperframes not installed: run `npm install` in the easyedit folder")
     rd = job / "render"
     prepare(rd)
     fps, frames = edit["fps"], edit["frames"]
-    total = frames / fps
-    # section boundaries on whole frames
-    per = int(SECTION * fps)
-    marks = list(range(0, frames, per)) + [frames]
-    if only:
-        a, b = int(only[0] * fps), min(frames, int(only[1] * fps))
-        marks = [a, b]
-    section_html(rd, 0, total, fps, "index.html")  # full composition, handy for `hyperframes preview`
-    # screenshot capture keeps 4 parallel workers; the experimental drawElement path pins to 1
-    env = {"PRODUCER_FORCE_SCREENSHOT": "true", **os.environ, "HYPERFRAMES_NO_TELEMETRY": "1"}
-    parts = []
+    a0, b0 = (int(only[0] * fps), min(frames, int(only[1] * fps))) if only else (0, frames)
+    n = max(1, min(PARALLEL, (b0 - a0) // (fps * 2)))
+    marks = [a0 + round(i * (b0 - a0) / n) for i in range(n + 1)]
+    section_html(rd, 0, frames / fps, fps, "index.html")  # full composition for `hyperframes preview`
     work = job / "work" / "sections"
     work.mkdir(parents=True, exist_ok=True)
+    fresh_after = max((rd / "edit.js").stat().st_mtime, (ROOT / "template" / "film.js").stat().st_mtime)
+    env = {**os.environ, "HYPERFRAMES_NO_TELEMETRY": "1"}
+    parts, jobs = [], []
     for k, (a, b) in enumerate(zip(marks, marks[1:])):
-        name = f"section-{k}.html"
-        section_html(rd, a / fps, (b - a) / fps, fps, name)
-        part = work / f"section-{k}-{a}-{b}.mp4"
+        part = work / f"section-{a}-{b}.mp4"
         parts.append(part)
-        if part.exists() and part.stat().st_mtime > (rd / "edit.js").stat().st_mtime \
-                and part.stat().st_mtime > (ROOT / "template" / "film.js").stat().st_mtime:
-            log(f"render: reuse section {k + 1}/{len(marks) - 1}")
+        if part.exists() and part.stat().st_mtime > fresh_after:
+            log(f"render: reuse section {a / fps:.1f}-{b / fps:.1f}s")
             continue
-        log(f"render: section {k + 1}/{len(marks) - 1} ({a / fps:.1f}-{b / fps:.1f}s)")
-        logf = work / f"section-{k}.log"
-        with logf.open("w", encoding="utf-8") as fh:
-            try:
-                run(["node", CLI, "render", ".", "--composition", name, "--fps", fps, "--quality", quality,
-                     "--workers", workers, "--output", part, "--quiet"],
-                    cwd=rd, env=env, stdout=fh, stderr=fh)
-            except Exception:
-                tail = logf.read_text(encoding="utf-8", errors="replace")[-1500:]
-                part.unlink(missing_ok=True)
-                raise SystemExit(f"hyperframes render failed (section {k}):\n{tail}")
+        name = f"section-{a}-{b}.html"
+        section_html(rd, a / fps, (b - a) / fps, fps, name)
+        logf = work / f"section-{a}-{b}.log"
+        cmd = ["node", str(CLI), "render", ".", "--composition", name, "--fps", str(fps), "--quality", quality,
+               "--low-memory-mode", "--workers", "1", "--frames-cache-dir", str(work / f"cache-{k}"),
+               "--output", str(part), "--quiet"]
+        fh = logf.open("w", encoding="utf-8")
+        jobs.append((subprocess.Popen(cmd, cwd=rd, env=env, stdout=fh, stderr=subprocess.STDOUT),
+                     fh, logf, part, name, k))
+    if jobs:
+        log(f"render: {len(jobs)} section(s) in parallel, {(b0 - a0)} frames @ {fps}fps")
+    t0 = time.time()
+    failed = None
+    for proc, fh, logf, part, name, k in jobs:
+        code = proc.wait()
+        fh.close()
+        shutil.rmtree(work / f"cache-{k}", ignore_errors=True)
         (rd / name).unlink(missing_ok=True)
+        if code != 0:
+            part.unlink(missing_ok=True)
+            failed = failed or logf.read_text(encoding="utf-8", errors="replace")[-1500:]
+    if failed:
+        raise SystemExit(f"hyperframes render failed:\n{failed}")
+    if jobs:
+        log(f"render: frames done in {time.time() - t0:.0f}s ({(b0 - a0) / (time.time() - t0):.1f} fps)")
     listing = work / "concat.txt"
     listing.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
     out.parent.mkdir(parents=True, exist_ok=True)
     sound = job / "work" / "soundtrack.m4a"
     cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing]
     if only:
-        cmd += ["-ss", "0", "-i", sound, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
-                "-af", f"atrim=start={only[0]:.3f},asetpts=PTS-STARTPTS", "-shortest"]
+        cmd += ["-i", sound, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+                "-af", f"atrim=start={a0 / fps:.3f},asetpts=PTS-STARTPTS", "-shortest"]
     else:
         cmd += ["-i", sound, "-map", "0:v", "-map", "1:a", "-c", "copy", "-shortest"]
     run(cmd + ["-movflags", "+faststart", out])

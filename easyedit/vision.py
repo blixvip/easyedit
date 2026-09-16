@@ -44,28 +44,40 @@ def frames(path: Path, fps: float, width: int, start: float = 0.0, duration: flo
 
 
 def letterbox(path: Path, duration: float) -> tuple[int, int, int, int] | None:
-    """Detect black bars. Returns ffmpeg crop (w,h,x,y) or None.
+    """Detect the real picture area. Returns ffmpeg crop (w,h,x,y) or None.
 
-    Uses the median content box across frames sampled from the middle of the clip, so
-    full-frame channel intros or bright titles don't hide real bars."""
+    A row belongs to the picture only if it is lit across most of its width in most frames.
+    Empty letterbox bars fail that test, and so do the bands that only hold a channel
+    watermark, a burned-in subtitle or a copyright line - those light up a few columns only."""
     from .util import probe
     info = probe(path)
     W, H = info["width"], info["height"]
     lo, hi = duration * 0.1, duration * 0.9
     step = max((hi - lo) / 30, 0.5)
-    boxes = []
+    row_cov, col_cov = [], []
     for _, img in frames(path, 1 / step, 320, lo, hi - lo):
-        g = img.max(axis=2)
-        rows = np.where(np.percentile(g, 98, axis=1) > 40)[0]
-        cols = np.where(np.percentile(g, 98, axis=0) > 40)[0]
-        if len(rows) > 10 and len(cols) > 10:
-            h, w = g.shape
-            boxes.append((rows[0] / h, (rows[-1] + 1) / h, cols[0] / w, (cols[-1] + 1) / w))
-    if len(boxes) < 4:
+        lit = img.max(axis=2) > 40
+        row_cov.append(lit.mean(axis=1))
+        col_cov.append(lit.mean(axis=0))
+    if len(row_cov) < 4:
         return None
-    b = np.array(boxes)
-    y0, y1 = np.percentile(b[:, 0], 30), np.percentile(b[:, 1], 70)
-    x0, x1 = np.percentile(b[:, 2], 30), np.percentile(b[:, 3], 70)
+    rows = np.percentile(np.stack(row_cov), 75, axis=0)
+    cols = np.percentile(np.stack(col_cov), 75, axis=0)
+
+    def span(cov: np.ndarray) -> tuple[float, float]:
+        """Longest run of rows/cols that are lit across at least a third of the frame."""
+        good = cov > 0.33
+        best = cur = None
+        for i, g in enumerate(good):
+            cur = (cur[0], i) if g and cur else ((i, i) if g else None)
+            if cur and (not best or cur[1] - cur[0] > best[1] - best[0]):
+                best = cur
+        if not best or best[1] - best[0] < len(cov) * 0.3:
+            return 0.0, 1.0
+        return best[0] / len(cov), (best[1] + 1) / len(cov)
+
+    y0, y1 = span(rows)
+    x0, x1 = span(cols)
     if y0 < 0.03 and y1 > 0.97:
         y0, y1 = 0.0, 1.0
     if x0 < 0.03 and x1 > 0.97:
