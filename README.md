@@ -36,6 +36,16 @@ pip install -r requirements.txt
 Optional LLM: log in to Claude Code (`claude`) or Codex (`codex login`). Without either you still get an edit,
 but it runs on heuristics.
 
+## Web UI
+
+```bash
+python -m easyedit.web      # http://127.0.0.1:4331 (easyedit-web.cmd on Windows)
+```
+
+A gallery of every edit you have made - thumbnail, length, the line it captions - plus a box to start a new
+one. Running jobs show a live stage/progress bar and their log, and can be stopped from the page. Click a
+thumbnail to watch the edit in the browser.
+
 ## Usage
 
 ```bash

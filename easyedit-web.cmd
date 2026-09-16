@@ -1,0 +1,1 @@
+@echo offrem Local web UI for easyedit (http://127.0.0.1:4331)py -3.12 -m easyedit.web %*
