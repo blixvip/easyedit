@@ -102,8 +102,9 @@ def main(argv=None) -> None:
     log(f"shots: {len(pool)} candidates across {len(analyses)} source(s)")
     music_beats = beats.analyze(music_files[0], job / "work" / f"beats-{music_files[0].stem}.json")
 
-    key = hashlib.sha256(json.dumps([q, plan, [str(f) for f in montage_files], str(music_files[0]), a.fps,
-                                     a.montage_length, a.hero_length, BUILD_VERSION],
+    key = hashlib.sha256(json.dumps([q, plan, str(music_files[0]), a.fps, a.montage_length,
+                                     a.hero_length, BUILD_VERSION,
+                                     [(an["source"], an["crop"], len(an["shots"])) for an in analyses]],
                                     sort_keys=True, default=str).encode()).hexdigest()
     key_file = job / "work" / "build.key"
     edit_js = job / "render" / "edit.js"

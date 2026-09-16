@@ -21,7 +21,7 @@ The finished video is saved to `jobs/<movie>/<movie>.mp4` as 1920×1080 at 60fps
 | **Shots** | Finds scene cuts in the montage sources and scores each shot on motion, sharpness, contrast, color and faces. It removes black bars, title cards and near-duplicate shots. |
 | **Beats** | A numpy beat tracker (spectral flux plus dynamic programming) finds the song's tempo, its beats and the drop. The montage starts exactly on the drop. |
 | **Assemble** | Cuts land exactly on real beats in a repeating short/long pattern. It encodes the footage frame-accurately, and the song stays quiet under the speech, then jumps to full volume on the drop. |
-| **Render** | A [HyperFrames](https://github.com/heygen-com/hyperframes) composition (`template/`) adds the effects: face-follow camera, captions that go from blur to outline to glowing fill, echo text behind emphasis words, whip transitions with directional motion blur, flashes, beat-synced zoom pulses, film grain, and a black-and-white final shot with the title card. It renders in 16s sections, and the soundtrack is muxed in at the end. |
+| **Render** | A [HyperFrames](https://github.com/heygen-com/hyperframes) composition (`template/`) adds the effects: face-follow camera, captions that go from blur to outline to glowing fill, echo text behind emphasis words, whip transitions with directional motion blur, flashes, beat-synced zoom pulses, film grain, and a black-and-white final shot with the title card. It renders as parallel sections (each one streams its frames straight into the encoder, so nothing piles up on disk), then the soundtrack is muxed in and the video is encoded once for delivery. |
 
 ## Setup
 
@@ -65,10 +65,16 @@ python -m easyedit "Scarface" --no-render             # build footage + edit.js 
 | `--cookies-from-browser` | | for age-restricted YouTube clips, e.g. `chrome` |
 | `--fresh` | | re-plan and re-pick instead of reusing the cache |
 
-Every stage caches its results in `jobs/<movie>/`: downloads, transcripts, shot and beat analysis, `plan.json` and `quote.json`.
+Every stage caches its results in `jobs/<movie>/`: downloads, transcripts, shot and beat analysis, `plan.json`,
+`quote.json` and `sources.json` (which pins the chosen downloads, since YouTube search results drift).
 Re-running is quick, and you can edit `quote.json` or `render/edit.js` by hand and render again.
 
-Environment overrides: `EASYEDIT_CLAUDE_MODEL` and `EASYEDIT_WHISPER` (a faster-whisper model name).
+Environment overrides: `EASYEDIT_CLAUDE_MODEL`, `EASYEDIT_WHISPER` (a faster-whisper model name),
+`EASYEDIT_PARALLEL` (render processes, default 2 - raise it if you have RAM to spare) and
+`EASYEDIT_ENCODER=x264` (the default uses NVENC when the GPU has it).
+
+Rendering is the slow part: roughly 5 frames/second at 1080p60 on a GTX 1650, so about 8 minutes
+for a 40-second edit. `--fps 30` halves it.
 
 ## Tweaking the look
 

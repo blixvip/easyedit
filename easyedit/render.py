@@ -15,7 +15,7 @@ FONTS = {
     "Anton.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf",
 }
 CLI = ROOT / "node_modules" / "hyperframes" / "bin" / "hyperframes.mjs"
-PARALLEL = int(os.environ.get("EASYEDIT_PARALLEL", "3"))
+PARALLEL = int(os.environ.get("EASYEDIT_PARALLEL", "2"))
 
 
 def ensure_fonts(dest: Path) -> None:
@@ -32,6 +32,20 @@ def ensure_fonts(dest: Path) -> None:
 def prepare(render_dir: Path) -> None:
     ensure_fonts(render_dir / "fonts")
     shutil.copy2(ROOT / "template" / "film.js", render_dir / "film.js")
+
+
+def encoder() -> list[str]:
+    """NVENC when the GPU has it (seconds instead of minutes), else x264."""
+    if os.environ.get("EASYEDIT_ENCODER") == "x264":
+        return ["-c:v", "libx264", "-preset", "slow", "-crf", "19"]
+    try:
+        codecs = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True,
+                                text=True, timeout=30).stdout
+        if "h264_nvenc" in codecs:
+            return ["-c:v", "h264_nvenc", "-preset", "p6", "-rc", "vbr", "-cq", "25", "-b:v", "0"]
+    except Exception:
+        pass
+    return ["-c:v", "libx264", "-preset", "slow", "-crf", "19"]
 
 
 def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str) -> None:
@@ -97,12 +111,12 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
     listing.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
     out.parent.mkdir(parents=True, exist_ok=True)
     sound = job / "work" / "soundtrack.m4a"
-    cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing]
+    cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing,
+           "-i", sound, "-map", "0:v", "-map", "1:a", "-shortest", "-c:a", "aac", "-b:a", "256k"]
     if only:
-        cmd += ["-i", sound, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
-                "-af", f"atrim=start={a0 / fps:.3f},asetpts=PTS-STARTPTS", "-shortest"]
-    else:
-        cmd += ["-i", sound, "-map", "0:v", "-map", "1:a", "-c", "copy", "-shortest"]
-    run(cmd + ["-movflags", "+faststart", out])
+        cmd += ["-af", f"atrim=start={a0 / fps:.3f},asetpts=PTS-STARTPTS"]
+    # the section files are near-lossless; re-encode once for a shareable file
+    cmd += encoder() + ["-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)]
+    run(cmd)
     log(f"done: {out} ({probe(out)['duration']:.2f}s)")
     return out
