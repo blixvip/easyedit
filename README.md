@@ -104,6 +104,18 @@ cd jobs/<movie>/render && npx hyperframes preview
 Use footage and music you have the right to use. easyedit doesn't include any film or music content; it only
 processes what you point it at or what it downloads into your local `jobs/` folder.
 
+## When something goes wrong
+
+| Symptom | Fix |
+|---|---|
+| YouTube downloads fail with HTTP 403 | `pip install -U "yt-dlp[default]"`. easyedit runs yt-dlp's JS challenges through Node, so Node must be on `PATH`. |
+| "every download failed" | The clip is age-restricted: `--cookies-from-browser chrome`. Or pass the scene yourself with `--speech <file|url>`. |
+| The quote is dull, or the wrong scene | Both LLM routes were rate-limited and the heuristic ran. Check the log for `quote (heuristic)`, then delete `jobs/<movie>/quote.json` and run again. |
+| Render dies on temp space | Disk capture needs ~9 MB per frame. easyedit already streams frames instead, so if you see this, something forced the old path - make sure `PRODUCER_FORCE_SCREENSHOT` is not set. |
+| Render is killed / the machine thrashes | Lower `EASYEDIT_PARALLEL` to 1. Each section is a separate Chrome. |
+| Captions stall on silence | The passage spans dead air. `MAX_GAP` in `quote.py` controls how much is allowed. |
+| Black bars or a channel watermark survive | `letterbox()` in `vision.py` keeps only rows lit across the frame; a very dark clip can defeat it. Crop the source yourself and pass it in. |
+
 ## How it fits together
 
 ```
