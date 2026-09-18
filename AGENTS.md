@@ -46,11 +46,13 @@ grade. If the film is newer than the AI writer's training data, the plan is gues
 rewrite `speech_query`, `montage_queries` and `music_query` with real YouTube URLs, and delete `sources.json`.
 Official studio channels and Movieclips give clean 1080p/4K sources.
 
-**The quote.** Read `jobs/<slug>/quote.json`. If `"source": "heuristic"`, or the words aren't the scene people
-remember, pick it yourself. Word timings are in `jobs/<slug>/work/words-*.json`. The passage must be one continuous
-span of 9-24s with no silence longer than 1.5s. Rewrite `quote.json` with the same shape. Lines should be 1-5
-words that break at punctuation. Give each emphasised word a `role` (`positive`, `negative`, `gold` or `cool`,
-roughly one word in four).
+**The quote.** Run `python -m easyedit.sheet "<Movie>" --report` first. `qa/report.txt` prints the passage
+with its emphasis words; read that instead of `quote.json`. If `source: heuristic` (the report flags this) or
+the words aren't the scene people remember, pick it yourself: delete `quote.json` and rerun the build with
+`--llm` connected, or transcribe manually. Word timings are in `jobs/<slug>/work/words-*.json`. The passage
+must be one continuous span of 9-24s with no silence longer than 1.5s. Lines should be 1-5 words that break
+at punctuation. Give each emphasised word a `role` (`positive`, `negative`, `gold` or `cool`, roughly one
+word in four).
 
 **The shots.**
 
@@ -58,13 +60,16 @@ roughly one word in four).
 python -m easyedit.sheet "Movie Title"
 ```
 
-Look at the images, since you can read images:
+`--report` (included by default in the run above) also writes `qa/report.txt`: a text list of every shot with
+its id, score, face flag and suspect flags, plus `qa/suggest-curate.json`, a ready-made curate draft. Read the
+text first - it's nearly free for you to read. Only open the images when the text leaves doubt:
 
 - `jobs/<slug>/qa/candidates.jpg`: every montage shot, numbered. `qa/candidates.txt` maps each number to its id.
 - `jobs/<slug>/qa/footage.jpg`: the assembled cut, in order.
 
-Look for these problems: trailer text cards, black bars or thin letterboxed strips, channel watermarks, the same
-shot several times, shots from the speech scene, and faces cropped out. Then write `jobs/<slug>/curate.json`:
+Look for these problems: title cards, channel watermarks, the same shot several times, shots from the speech
+scene, and faces cropped out. (White-on-black title cards are already flagged and ranked down automatically.)
+Then write `jobs/<slug>/curate.json` - start from `qa/suggest-curate.json` and edit it:
 
 ```json
 {
@@ -76,7 +81,7 @@ shot several times, shots from the speech scene, and faces cropped out. Then wri
 
 `pin` is the montage in order, with about 24 shots for the default 21s. Make it build like a story, from calm to
 intense, and save the most striking image for `hero`, the black-and-white final shot. Unpinned shots fill any
-gaps. Run the `--no-render` build again and look at `qa/footage.jpg` again.
+gaps. Run the `--no-render` build again and re-check `qa/report.txt` (or `qa/footage.jpg` if unsure).
 
 If there are too few good shots, add sources with `--montage <url>`, which you can repeat. Pass the same flags
 on every later run.
@@ -91,6 +96,9 @@ python -m easyedit.sheet "Movie Title" --final
 Look at `qa/final.jpg`. The captions should be readable, faces in frame, no watermark, and the title card on
 the last shot. The video is `jobs/<slug>/<slug>.mp4`, at 1920×1080 and 60fps. Tell the user that path. Don't
 say it looks good unless you've looked at the stills.
+
+Token discipline: the `--report` text and `report.txt` are cheap to read; every image you open costs far more.
+Read text first, images only for doubt.
 
 ## Driving the web UI instead
 

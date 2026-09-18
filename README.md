@@ -141,9 +141,11 @@ they're listed in `work/shots-*.json`:
 {"pin": ["TaaDkbG3I7g@110.52", "ebjTAHwSWMw@73.60"], "exclude": ["TaaDkbG3I7g@32.77"], "hero": "ebjTAHwSWMw@163.10"}
 ```
 
-To see the shots, run `python -m easyedit.sheet "<movie>"`. It writes `qa/candidates.jpg` (every shot, numbered),
-`qa/candidates.txt` (number → id) and `qa/footage.jpg` (the cut in order). Add `--final` to get stills from
-the rendered video.
+To see the shots, run `python -m easyedit.sheet "<movie>"`. It writes `qa/report.txt` (a text summary of the
+quote and the shot pool, with flags for suspect shots), `qa/suggest-curate.json` (a ready-to-edit curate
+draft), `qa/candidates.jpg` (every shot, numbered), `qa/candidates.txt` (number → id) and `qa/footage.jpg`
+(the cut in order). Use `--report` for just the text, no images. Add `--final` to get stills from the
+rendered video.
 
 `pin` shots are used first, in that order. `exclude` shots are never used, and `hero` is the final black-and-white shot.
 
@@ -198,7 +200,7 @@ easyedit/
   web.py        the local web UI (web/index.html, web/assets/ logo + icon)
   design.py     poster design from an imported picture (used by the web UI)
   doctor.py     setup check: AI accounts + tools (used by the UI and by agents)
-  sheet.py      contact sheets for checking shots and the final render
+  sheet.py      contact sheets (and a text-only QA report) for checking shots and the final render
   skill.py      installs the Claude Code skill
 template/       index.html + film.js: every visual effect, as a function of time
 skills/         the /easyedit skill for Claude Code

@@ -14,7 +14,7 @@ from . import assemble, beats, fetch, plan as planner, quote, render, shots, tra
 from .util import JOBS, log, need, read_json, slugify, write_json
 from .vision import FaceDetector
 
-BUILD_VERSION = 3  # bump when assemble output changes
+BUILD_VERSION = 4  # bump when assemble output changes
 
 
 def parse(argv=None):

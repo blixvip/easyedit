@@ -13,21 +13,17 @@ SYSTEM = "You are a film editor choosing captioned lines for a fan edit. Reply w
 
 PROMPT = """Film: {title}. Scene we want: {scene}
 
-Below are transcribed words from {n} candidate clip(s), formatted `index:word` (per clip, with
-[t=seconds] markers every few words). Pick ONE continuous passage from ONE clip that is the most
-iconic, quotable and emotionally punchy. It must be {lo:.0f}-{hi:.0f} seconds long, start at the
-beginning of a sentence and end at the end of a sentence. It must be CONTINUOUS speech: never span a
-silence longer than 1.5 seconds (check the [t=] markers - a jump means crowd noise or music, not
-talking). Skip narrator/trailer voiceover, YouTube intros and garbled text.
+Here are candidate passages transcribed from the clip(s). Pick the ONE that is the film's most
+iconic, quotable and emotionally punchy moment. Reject anything that reads like narrator voiceover,
+YouTube commentary or an interview. The passage is used verbatim as on-screen captions.
 
-Then pick emphasis words inside the passage (about 1 per 4 words, never filler words) and give each
-a color role: positive (wealth, winning, love, success), negative (pain, poverty, death, failure),
-gold (power, luxury, the single biggest word of a line), cool (names, places, objects).
+Then mark up to 8 emphasis words from THAT passage: positive (wealth, winning, love, success),
+negative (pain, poverty, death, failure), gold (power, luxury, the biggest word of a line),
+cool (names, places, objects). Never filler words.
 
-Return JSON: {{"clip": 0, "start": first_word_index, "end": last_word_index,
-"emphasis": {{"word_index": "role"}}, "reason": "short"}}
+Return JSON: {{"pick": <candidate number>, "emphasis": [["word", "role"], ...], "reason": "short"}}
 
-{listing}"""
+{candidates}"""
 
 FILLER = set("a an the and or but so to of in on at is am are was were be been i you he she it we they "
              "my your his her its our their this that with for as if then just like um uh oh".split())
@@ -39,25 +35,24 @@ LEXICON = {
     "gold": "gold golden god legend everything forever always every fucking diamond crown",
 }
 
-
-def _listing(clips: list[list[dict]]) -> str:
-    out = []
-    for c, words in enumerate(clips):
-        parts = [f"--- clip {c} ---"]
-        for i, w in enumerate(words):
-            if i % 8 == 0:
-                parts.append(f"[t={w['start']:.1f}]")
-            parts.append(f"{i}:{w['text']}")
-        out.append(" ".join(parts))
-    return "\n".join(out)
+MAX_GAP = 1.5  # dead air inside a passage; longer than this and the captions visibly stall
 
 
 def _sentence_end(text: str) -> bool:
-    return bool(re.search(r"[.!?…]['\"”’)]*$", text))
+    return bool(re.search(r"[.!?…]['\"\u201d\u2019)]*$", text))
 
 
-def _heuristic(clips: list[list[dict]]):
-    best = None
+def _text(words: list[dict], s: int, e: int) -> str:
+    return " ".join(w["text"].strip(",'") for w in words[s:e + 1])
+
+
+def _candidates(clips: list[list[dict]], limit: int = 12) -> list[dict]:
+    """Every valid captionable span (9-24s, sentence-aligned, no dead air), scored.
+
+    The LLM then only has to choose between a dozen pre-validated options instead of
+    counting word indexes - fewer tokens in, and no more picks that fail validation.
+    """
+    scored = []
     for c, words in enumerate(clips):
         starts = [i for i in range(len(words))
                   if i == 0 or _sentence_end(words[i - 1]["text"]) or words[i]["start"] - words[i - 1]["end"] > 0.5]
@@ -75,19 +70,61 @@ def _heuristic(clips: list[list[dict]]):
                 rate = len(seg) / span
                 conf = sum(w["prob"] for w in seg) / len(seg)
                 score = conf * 2 - abs(rate - 2.6) * 0.4 - gaps * 0.8 + min(span, 18) / 18
-                if not best or score > best[0]:
-                    best = (score, c, s, e)
-    if not best:  # no sentence punctuation at all: take the densest window
-        for c, words in enumerate(clips):
-            for s in range(len(words)):
-                e = s
-                while e + 1 < len(words) and words[e + 1]["end"] - words[s]["start"] <= 16:
-                    e += 1
-                if e > s and (not best or e - s > best[3] - best[2]):
-                    best = (0, c, s, e)
-    if not best:
-        return None
-    return {"clip": best[1], "start": best[2], "end": best[3], "emphasis": {}}
+                scored.append({"clip": c, "start": s, "end": e, "score": score})
+    # drop candidates that overlap a better-scoring one, keep the top few
+    scored.sort(key=lambda c: -c["score"])
+    kept = []
+    for c in scored:
+        if len(kept) >= limit:
+            break
+        if any(c["clip"] == k["clip"] and c["start"] < k["end"] and k["start"] < c["end"] for k in kept):
+            continue
+        kept.append(c)
+    return kept
+
+
+def _format(cands: list[dict], clips: list[list[dict]]) -> str:
+    out = []
+    for n, c in enumerate(cands):
+        w = clips[c["clip"]]
+        dur = w[c["end"]]["end"] - w[c["start"]]["start"]
+        out.append(f"{n}. [{dur:.0f}s] {_text(w, c['start'], c['end'])}")
+    return "\n".join(out)
+
+
+def _densest(clips: list[list[dict]]) -> dict | None:
+    """Last-resort pick when the clip has no sentence punctuation at all."""
+    best = None
+    for c, words in enumerate(clips):
+        for s in range(len(words)):
+            e = s
+            while e + 1 < len(words) and words[e + 1]["end"] - words[s]["start"] <= 16:
+                e += 1
+            if e > s and (not best or e - s > best["end"] - best["start"]):
+                best = {"clip": c, "start": s, "end": e}
+    return best
+
+
+def _emphasis_from_pairs(words: list[dict], s: int, e: int, pairs) -> dict:
+    """Map (word, role) emphasis pairs from the LLM onto indexes inside the picked span."""
+    if isinstance(pairs, dict):  # accept {"word": "role"} too
+        pairs = list(pairs.items())
+    out = {}
+    for item in pairs or []:
+        try:
+            if isinstance(item, dict):
+                word, role = str(item.get("word", "")).strip().lower(), str(item.get("role", ""))
+            else:
+                word, role = str(item[0]).strip().lower(), str(item[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if role not in ROLES or word in FILLER:
+            continue
+        for i in range(s, e + 1):
+            if i - s not in out and _clean(words[i]["text"]).lower() == word:
+                out[i - s] = role
+                break
+    return out
 
 
 def _clean(text: str) -> str:
@@ -127,31 +164,8 @@ def lines(words: list[dict], max_words: int = 6, max_chars: int = 26) -> list[li
     return groups
 
 
-MAX_GAP = 1.5  # dead air inside a passage; longer than this and the captions visibly stall
-
-
 def _voiced(words: list[dict], s: int, e: int) -> float:
     return sum(w["end"] - w["start"] for w in words[s:e + 1])
-
-
-def _extend(words: list[dict], s: int, e: int) -> tuple[int, int]:
-    """Grow a too-short pick by whole sentences (forward first, then backward), never over dead air."""
-    def span(a, b):
-        return words[b]["end"] - words[a]["start"]
-    while span(s, e) < MIN_SPAN:
-        nxt = next((j for j in range(e + 1, len(words)) if _sentence_end(words[j]["text"])
-                    or j == len(words) - 1), None)
-        if (nxt is not None and span(s, nxt) <= MAX_SPAN
-                and words[e + 1]["start"] - words[e]["end"] <= MAX_GAP):
-            e = nxt
-            continue
-        prv = next((j for j in range(s - 1, -1, -1) if j == 0 or _sentence_end(words[j - 1]["text"])), None)
-        if (prv is not None and span(prv, e) <= MAX_SPAN
-                and words[s]["start"] - words[s - 1]["end"] <= MAX_GAP):
-            s = prv
-            continue
-        break
-    return s, e
 
 
 def _tighten(words: list[dict], s: int, e: int) -> tuple[int, int]:
@@ -175,37 +189,31 @@ def _tighten(words: list[dict], s: int, e: int) -> tuple[int, int]:
 
 
 def choose(clips: list[list[dict]], plan: dict, provider: str) -> dict:
-    listing = _listing(clips)
-    pick = ask_json(PROMPT.format(title=plan["title"], scene=plan["speech_scene"], n=len(clips),
-                                  lo=MIN_SPAN, hi=MAX_SPAN, listing=listing), SYSTEM, provider)
-    ok = False
-    if isinstance(pick, dict):
-        try:
-            c, s, e = int(pick["clip"]), int(pick["start"]), int(pick["end"])
-            span = clips[c][e]["end"] - clips[c][s]["start"]
-            ok = 0 <= s < e and 4.0 <= span <= MAX_SPAN + 6
-        except (KeyError, ValueError, IndexError, TypeError):
-            ok = False
-    if not ok:
-        log("quote: LLM pick unusable, using heuristic")
-        pick = _heuristic(clips)
+    cands = _candidates(clips)
+    pick, emphasis_pairs, source, reason = None, None, "heuristic", ""
+    if cands:
+        reply = ask_json(PROMPT.format(title=plan["title"], scene=plan["speech_scene"],
+                                       candidates=_format(cands, clips)), SYSTEM, provider)
+        if isinstance(reply, dict):
+            try:
+                n = int(reply.get("pick"))
+            except (TypeError, ValueError):
+                n = -1
+            if 0 <= n < len(cands):
+                pick, source = cands[n], "llm"
+                reason = str(reply.get("reason", ""))[:100]
+                emphasis_pairs = reply.get("emphasis")
+            else:
+                log("quote: LLM pick out of range, using best candidate")
+    if pick is None:
+        pick = cands[0] if cands else _densest(clips)
         if not pick:
             raise RuntimeError("no speech found in the speech clip(s)")
-        source = "heuristic"
-    else:
-        source = "llm"
-    c, s, e = int(pick["clip"]), int(pick["start"]), int(pick["end"])
+        reason = "best-scored candidate" if cands else "densest window"
+    c, s, e = pick["clip"], pick["start"], pick["end"]
     s, e = _tighten(clips[c], s, e)
-    s, e = _extend(clips[c], s, e)
     words = clips[c][s:e + 1]
-    emphasis = {}
-    for k, role in (pick.get("emphasis") or {}).items():
-        try:
-            idx = int(k) - s
-        except ValueError:
-            continue
-        if 0 <= idx < len(words) and role in ROLES and _clean(words[idx]["text"]).lower() not in FILLER:
-            emphasis[idx] = role
+    emphasis = _emphasis_from_pairs(clips[c], s, e, emphasis_pairs)
     if not emphasis:
         emphasis = _auto_emphasis(words)
     caption_words = [{"text": _clean(w["text"]), "start": w["start"], "end": w["end"],
@@ -213,7 +221,7 @@ def choose(clips: list[list[dict]], plan: dict, provider: str) -> dict:
     caption_words = [w for w in caption_words if w["text"]]
     groups = lines(caption_words)
     result = {
-        "clip": c, "source": source, "reason": pick.get("reason", ""),
+        "clip": c, "source": source, "reason": reason,
         "start": words[0]["start"], "end": words[-1]["end"],
         "lines": [[caption_words[i] for i in g] for g in groups],
     }

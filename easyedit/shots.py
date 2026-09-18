@@ -10,6 +10,7 @@ from .vision import FaceDetector, frames, letterbox
 
 SAMPLE_FPS = 12
 HEAD_SKIP, TAIL_SKIP = 6.0, 12.0  # channel intros / end screens
+CACHE_VERSION = 2  # bump when the shot features/filters change
 
 
 def _cuts(diffs: np.ndarray) -> list[int]:
@@ -24,18 +25,24 @@ def _cuts(diffs: np.ndarray) -> list[int]:
 
 def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
     if cache.exists():
-        return read_json(cache)
+        cached = read_json(cache)
+        if cached.get("v") == CACHE_VERSION:
+            return cached
     import cv2
     info = probe(src)
     dur = info["duration"]
     crop = letterbox(src, dur)
-    times, thumbs, grays, sats = [], [], [], []
+    times, thumbs, grays, sats, grays_frac = [], [], [], [], []
     for t, img in frames(src, SAMPLE_FPS, 160, crop=crop, height=90):
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         times.append(t)
         grays.append(g)
         thumbs.append(cv2.resize(img, (32, 18), interpolation=cv2.INTER_AREA).astype(np.float32))
-        sats.append(cv2.cvtColor(img, cv2.COLOR_BGR2HSV)[..., 1].mean())
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        sats.append(hsv[..., 1].mean())
+        # fraction of lit pixels with no color: footage has some, title cards are nearly all gray
+        grays_frac.append(float(((hsv[..., 1] < 45) & (hsv[..., 2] > 60)).mean()))
+    colorful = bool(sats) and float(np.median(sats)) > 25  # B&W films: the gray test means nothing
     if len(grays) < SAMPLE_FPS * 3:
         return {"source": str(src), "shots": [], "crop": crop}
     G = np.stack(grays).astype(np.float32)
@@ -53,10 +60,14 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
         if bright < 18 or contrast < 14 or dark_frac > 0.85 or bright > 225:  # loose: horror/noir films live in the dark
             continue
         motion = float(np.abs(np.diff(seg, axis=0)).mean()) if len(seg) > 1 else 0.0
+        gray = float(np.mean(grays_frac[a:b]))
+        if colorful and gray > 0.55 and motion < 10:  # white-on-black title cards, logos, credits
+            continue
         mid = (a + b) // 2
         sharp = float(cv2.Laplacian(G[mid], cv2.CV_32F).var())
         shots.append({"start": round(t0, 3), "end": round(t1, 3), "bright": bright, "contrast": contrast,
                       "motion": motion, "sharp": sharp, "sat": float(np.mean(sats[a:b])),
+                      "gray": round(gray, 3),
                       "thumb": [round(float(v), 1) for v in thumbs[mid].mean(axis=2).ravel()]})
 
     # face check on each shot's middle frame at higher res
@@ -76,7 +87,8 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
             for s in hit:
                 s["face"] = [round(found[0][0], 4), round(found[0][1], 4), round(found[0][2], 4)]
 
-    out = {"source": str(src), "duration": dur, "crop": crop, "size": [W, H], "shots": shots}
+    out = {"v": CACHE_VERSION, "source": str(src), "duration": dur, "crop": crop, "size": [W, H],
+           "shots": shots}
     write_json(cache, out)
     log(f"shots: {len(shots)} usable of {len(bounds) - 1} in {src.name}")
     return out
@@ -98,11 +110,14 @@ def rank(analyses: list[dict]) -> list[dict]:
     sharp = _z([np.log1p(s["sharp"]) for s in pool])
     contrast = _z([s["contrast"] for s in pool])
     sat = _z([s["sat"] for s in pool])
+    colorful = float(np.median([s["sat"] for s in pool])) > 25
     for i, s in enumerate(pool):
         face = 0.0 if not s["face"] else 0.4 + min(s["face"][2], 0.5)
         length = min(s["end"] - s["start"], 3.0) / 3.0
         s["score"] = float(0.35 * motion[i] + 0.25 * sharp[i] + 0.2 * contrast[i] + 0.15 * sat[i]
                            + face + 0.2 * length)
+        if colorful:  # near-grayscale frames are title cards / credits, not footage
+            s["score"] -= 1.6 * max(0.0, s.get("gray", 0.0) - 0.25)
     pool.sort(key=lambda s: -s["score"])
     return pool
 
