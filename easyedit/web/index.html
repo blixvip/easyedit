@@ -23,9 +23,10 @@
   nav a { color: var(--dim); text-decoration: none; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; }
   nav a:hover { color: var(--text); background: var(--panel); }
   a { color: var(--accent); }
-  .notice { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px;
-            background: #1d1a0e; border: 1px solid #3a3722; color: #e9dfb4; border-radius: 12px; padding: 10px 14px;
-            font-size: 13.5px; }
+  .notice { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap;
+            margin-bottom: 12px; background: #1d1a0e; border: 1px solid #3a3722; color: #e9dfb4;
+            border-radius: 12px; padding: 10px 14px; font-size: 13.5px; }
+  .notice span, .section-lead, .acct p, .bot p { min-width: 0; overflow-wrap: anywhere; }
   .notice[hidden] { display: none; }
   .notice a { white-space: nowrap; font-weight: 600; }
   .writer { margin-left: 14px; font-size: 13px; color: var(--dim); }
@@ -33,7 +34,7 @@
   .section-lead { color: var(--dim); margin: -4px 0 14px; font-size: 14px; max-width: 760px; }
   .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
   .acct { display: flex; flex-direction: column; gap: 8px; }
-  .acct .row, .bot .row { justify-content: space-between; }
+  .acct .row, .bot .row { justify-content: space-between; flex-wrap: wrap; }
   .acct h3, .bot h3, .card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: #4a505c; display: inline-block; margin-right: 9px; }
   .dot.on { background: var(--good); box-shadow: 0 0 10px #8dff8a66; }
@@ -48,10 +49,10 @@
   .checks .st { width: 18px; flex: none; text-align: center; font-weight: 700; }
   .checks .ok { color: var(--good); } .checks .bad { color: var(--bad); }
   .checks .d { color: var(--dim); }
-  .bot { display: flex; flex-direction: column; gap: 10px; }
-  .bot pre { max-height: none; margin: 0; flex: 1; overflow-wrap: anywhere; }
+  .bot { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .bot pre { max-height: none; margin: 0; flex: 1; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
   .step { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
   .prompt { display: flex; gap: 10px; }
   input, select { background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
     border-radius: 10px; padding: 12px 14px; font: inherit; width: 100%; }
@@ -65,8 +66,9 @@
   .opts { margin-top: 14px; display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
   .opts.open { display: grid; }
   label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 5px; letter-spacing: .3px; }
-  .toggle { margin-top: 12px; background: none; border: 0; color: var(--dim); font-size: 13px; padding: 0; cursor: pointer; }
-  .row { display: flex; align-items: center; gap: 10px; }
+  .optbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+  .toggle { background: none; border: 0; color: var(--dim); font-size: 13px; padding: 0; cursor: pointer; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim);
        margin: 34px 0 12px; font-weight: 600; }
   .runs { display: grid; gap: 12px; }
@@ -103,8 +105,11 @@
   @media (max-width: 640px) {
     body { padding: 20px 16px 60px; }
     .prompt { flex-direction: column; }
-    nav { margin-left: -10px; width: 100%; }
-    .cols { grid-template-columns: 1fr; }
+    header, nav { width: auto; }
+    nav { margin-left: 0; flex-basis: 100%; }
+    .notice { display: block; }
+    .notice a { display: inline-block; margin-top: 6px; }
+    .cols, .checks { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -125,7 +130,7 @@
     <input id="movie" placeholder="Movie name — e.g. Gladiator" autocomplete="off" autofocus>
     <button id="go">Make the edit</button>
   </form>
-  <button class="toggle" type="button" id="toggle">Options ▾</button><span class="writer" id="writer"></span>
+  <div class="optbar"><button class="toggle" type="button" id="toggle">Options ▾</button><span class="writer" id="writer"></span></div>
   <div class="opts" id="opts">
     <div><label>Speech scene (file, URL or search)</label><input id="speech" placeholder="auto"></div>
     <div><label>Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
@@ -209,12 +214,8 @@ $('toggle').onclick = () => {
   $('toggle').textContent = open ? 'Options ▴' : 'Options ▾';
 };
 
-$('form').onsubmit = async e => {
-  e.preventDefault();
-  const movie = $('movie').value.trim();
-  if (!movie) return;
-  $('go').disabled = true;
-  const res = await api('/api/new', {
+function editBody(movie) {
+  return {
     movie,
     speech: $('speech').value.trim() || null,
     music: $('music').value.trim() || null,
@@ -224,22 +225,36 @@ $('form').onsubmit = async e => {
     hero_length: $('hero_length').value || null,
     llm: $('llm').value || null,
     draft: !!$('draft').value,
-  });
-  $('go').disabled = false;
-  if (res.error) return alert(res.error);
-  $('movie').value = '';
-  openLogs.add(res.slug);
-  refresh();
+  };
+}
+
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  const movie = $('movie').value.trim();
+  if (!movie) return;
+  $('go').disabled = true;
+  try {
+    const res = await api('/api/new', editBody(movie));
+    if (res.error) return alert(res.error);
+    if (res.already) return alert('That edit is already running.');
+    openLogs.add(res.slug);
+    refresh();
+  } catch {
+    alert('The easyedit app did not answer. Leave this page open and try again.');
+  } finally {
+    $('go').disabled = false;
+  }
 };
 
 const openLogs = new Set();
 
 function runCard(job) {
   const pct = Math.round((job.progress || 0) * 100);
+  const status = job.error ? 'error' : (job.stage || 'working');
   return `<div class="card">
     <div class="row" style="justify-content:space-between">
-      <strong>${job.title}</strong>
-      <span class="pill ${job.error ? 'err' : ''}">${job.error ? 'error' : job.stage || 'working'}</span>
+      <strong>${esc(job.title)}</strong>
+      <span class="pill ${job.error ? 'err' : ''}">${esc(status)}</span>
     </div>
     <div class="bar"><i style="width:${pct}%"></i></div>
     <div class="row" style="justify-content:space-between">
@@ -254,17 +269,18 @@ function runCard(job) {
 }
 
 function tile(job) {
-  const thumb = job.thumb ? `background-image:url('${job.thumb}?t=${Math.round(job.updated)}')` : '';
+  const thumb = job.thumb ? `background-image:url('${esc(job.thumb)}?t=${Math.round(job.updated)}')` : '';
+  const state = job.running ? (job.stage || 'working') : 'not rendered';
   return `<div class="tile">
-    <div class="thumb ${job.video ? '' : 'empty'}" style="${thumb}" ${job.video ? `data-play="${job.slug}"` : ''}></div>
+    <div class="thumb ${job.video ? '' : 'empty'}" style="${thumb}" ${job.video ? `data-play="${esc(job.slug)}"` : ''}></div>
     <div class="body">
-      <h3>${job.title}</h3>
+      <h3>${esc(job.title)}</h3>
       <div class="meta">${job.video ? `${fmt(job.duration)} · ${job.size} MB · ${ago(job.updated)}`
-                                    : `${job.running ? job.stage || 'working' : 'not rendered'} · ${ago(job.updated)}`}</div>
-      ${job.scene ? `<div class="scene">${job.scene}</div>` : ''}
+                                    : `${esc(state)} · ${ago(job.updated)}`}</div>
+      ${job.scene ? `<div class="scene">${esc(job.scene)}</div>` : ''}
       <div class="actions">
-        ${job.video ? `<button data-play="${job.slug}">Play</button>` : ''}
-        <button class="ghost" data-again="${job.title}">Re-run</button>
+        ${job.video ? `<button data-play="${esc(job.slug)}">Play</button>` : ''}
+        <button class="ghost" data-again="${esc(job.slug)}">Re-run</button>
         <button class="ghost" data-folder="${job.slug}">Folder</button>
         <button class="ghost" data-delete="${job.slug}">Delete</button>
       </div>
@@ -274,13 +290,24 @@ function tile(job) {
 
 let jobs = [];
 async function refresh() {
-  const data = await api('/api/jobs');
+  let data;
+  try { data = await api('/api/jobs'); } catch { return; }
   jobs = data.jobs || [];
   const running = jobs.filter(j => j.running);
+  const kept = {};
+  document.querySelectorAll('pre[id^="log-"]').forEach(el => {
+    if (el.textContent && el.textContent !== 'loading…') kept[el.id] = { text: el.textContent, scroll: el.scrollTop };
+  });
   $('runsWrap').hidden = !running.length;
   $('runs').innerHTML = running.map(runCard).join('');
   $('grid').innerHTML = jobs.map(tile).join('');
   $('empty').hidden = jobs.length > 0;
+  for (const [id, saved] of Object.entries(kept)) {
+    const el = $(id);
+    if (!el) continue;
+    el.textContent = saved.text;
+    el.scrollTop = saved.scroll;
+  }
   running.forEach(j => openLogs.has(j.slug) && pullLog(j.slug));
 }
 
@@ -312,9 +339,15 @@ document.addEventListener('click', async e => {
   } else if (d.folder) {
     api('/api/reveal', { slug: d.folder });
   } else if (d.again) {
-    $('movie').value = d.again;
-    $('movie').focus();
+    const job = jobs.find(j => j.slug === d.again);
+    if (!job) return;
+    if (!confirm(`Start another edit of "${job.title}"?`)) return;
+    const res = await api('/api/new', { ...editBody(job.title), movie: job.title });
+    if (res.error) return alert(res.error);
+    if (res.already) return alert('That edit is already running.');
+    openLogs.add(res.slug);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    refresh();
   } else if (d.delete) {
     const job = jobs.find(j => j.slug === d.delete);
     if (confirm(`Delete "${job.title}" and everything downloaded for it?`)) {

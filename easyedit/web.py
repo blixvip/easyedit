@@ -25,7 +25,20 @@ from .util import JOBS, ROOT, probe, read_json, slugify
 
 PORT = int(os.environ.get("EASYEDIT_PORT", "4331"))
 WEB = Path(__file__).parent / "web"
+_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 mimetypes.add_type("image/svg+xml", ".svg")  # missing from the Windows registry on some machines
+
+
+def safe_job(slug: str) -> Path | None:
+    """A job directory inside jobs/, or None. Slugs come from the page and the URL."""
+    slug = (slug or "").strip()
+    if not slug or len(slug) > 60 or not _SLUG.fullmatch(slug):
+        return None
+    root = JOBS.resolve()
+    job = (root / slug).resolve()
+    if root not in job.parents:
+        return None
+    return job
 
 # log line -> (stage label, fraction of the run that is done once it appears)
 STAGES = [
@@ -310,45 +323,52 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/jobs":
             return self._json({"jobs": [job_info(j) for j in job_dirs()]})
         if path.startswith("/api/log/"):
-            log = JOBS / path[len("/api/log/"):] / "run.log"
+            job = safe_job(path[len("/api/log/"):])
+            if not job:
+                return self._json({"error": "unknown edit"}, 404)
+            log = job / "run.log"
             text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
-            slug = path[len("/api/log/"):]
-            return self._json({"log": text[-8000:], **progress_of(slug, log),
-                               "running": bool(_runs.get(slug) and _runs[slug]["proc"].poll() is None)})
+            return self._json({"log": text[-8000:], **progress_of(job.name, log),
+                               "running": bool(_runs.get(job.name) and _runs[job.name]["proc"].poll() is None)})
         if path.startswith("/thumb/"):
-            job = JOBS / path[len("/thumb/"):].removesuffix(".jpg")
-            thumb = thumb_of(job) if job.is_dir() else None
+            job = safe_job(path[len("/thumb/"):].removesuffix(".jpg"))
+            thumb = thumb_of(job) if job and job.is_dir() else None
             if not thumb:
                 return self._send(404, b"no thumbnail", "text/plain")
             return self._file(thumb)
         if path.startswith("/media/"):
             rel = path[len("/media/"):].split("/", 1)
-            if len(rel) == 2:
-                target = (JOBS / rel[0] / rel[1]).resolve()
-                if target.is_file() and JOBS.resolve() in target.parents:
-                    return self._file(target)
+            job = safe_job(rel[0]) if len(rel) == 2 else None
+            name = Path(rel[1]).name if len(rel) == 2 else ""
+            target = (job / name).resolve() if job and name else None
+            if target and target.is_file() and job in target.parents:
+                return self._file(target)
             return self._send(404, b"not found", "text/plain")
         return self._send(404, b"not found", "text/plain")
 
     def do_POST(self):
         path = urlparse(self.path).path
         raw = self.rfile.read(int(self.headers.get("Content-Length") or 0) or 0)
-        body = json.loads(raw or b"{}")
+        try:
+            body = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            return self._json({"error": "invalid JSON"}, 400)
         try:
             if path == "/api/new":
                 return self._json(start_job(body))
             if path == "/api/connect":
                 return self._json(connect(body.get("provider", "")))
             if path == "/api/stop":
-                return self._json({"stopped": stop_job(body.get("slug", ""))})
+                job = safe_job(body.get("slug", ""))
+                return self._json({"stopped": bool(job) and stop_job(job.name)})
             if path == "/api/reveal":
-                job = JOBS / body.get("slug", "")
-                if job.is_dir() and os.name == "nt":
+                job = safe_job(body.get("slug", ""))
+                if job and job.is_dir() and os.name == "nt":
                     subprocess.Popen(["explorer", str(job)])
-                return self._json({"ok": job.is_dir()})
+                return self._json({"ok": bool(job and job.is_dir())})
             if path == "/api/delete":
-                job = (JOBS / body.get("slug", "")).resolve()
-                if job.is_dir() and JOBS.resolve() in job.parents:
+                job = safe_job(body.get("slug", ""))
+                if job and job.is_dir():
                     stop_job(job.name)
                     shutil.rmtree(job, ignore_errors=True)
                     return self._json({"deleted": True})
