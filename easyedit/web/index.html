@@ -57,6 +57,8 @@
   input, select { background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
     border-radius: 10px; padding: 12px 14px; font: inherit; width: 100%; }
   input:focus, select:focus { outline: 2px solid #46506a; }
+  input[type="file"] { padding: 10px 12px; }
+  .design-result { display: block; width: min(100%, 420px); margin-top: 16px; border-radius: 16px; background: #05060a; }
   button { background: var(--accent); color: #17181c; border: 0; border-radius: 10px; padding: 12px 20px;
     font: 600 15px/1 "Segoe UI", system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
   button:hover { filter: brightness(1.08); }
@@ -118,7 +120,7 @@
   <h1><img src="/assets/logo.svg" alt="easyedit"></h1>
   <p>type a movie, get a captioned speech + beat-cut montage</p>
   <nav>
-    <a href="#top">Make</a><a href="#edits">Edits</a><a href="#connect">Connect</a><a href="#bot">Bot</a>
+    <a href="#top">Make</a><a href="#picture-design">Design</a><a href="#edits">Edits</a><a href="#connect">Connect</a><a href="#bot">Bot</a>
     <a href="https://github.com/blixvip/easyedit" target="_blank" rel="noopener">GitHub</a>
   </nav>
 </header>
@@ -141,6 +143,17 @@
     <div><label>Writer</label><select id="llm"><option value="">auto</option><option>claude</option><option>codex</option><option>none</option></select></div>
     <div><label>Speed</label><select id="draft"><option value="">full quality</option><option value="1">draft (30fps, fast)</option></select></div>
   </div>
+</div>
+
+<div class="card" id="picture-design" style="margin-top:14px">
+  <h2 style="margin-top:0">Design from a picture</h2>
+  <p class="section-lead">Import a PNG, JPEG, or WebP. The page designs a poster from that picture's colors and light.</p>
+  <form class="prompt" id="designForm">
+    <input id="picture" name="picture" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
+    <button type="submit" id="designGo">Design it</button>
+  </form>
+  <p class="meta" id="designStatus"></p>
+  <img id="designResult" class="design-result" alt="Designed from the imported picture" hidden>
 </div>
 
 <div id="runsWrap" hidden>
@@ -421,6 +434,35 @@ Poll GET ${origin}/api/jobs every 30s until that job has a "video", then give me
   $('promptSkill').textContent = `${/\s/.test(py) ? `"${py}"` : py} -m easyedit.skill install`;
 }
 $('movie').addEventListener('input', renderPrompts);
+
+$('designForm').onsubmit = async e => {
+  e.preventDefault();
+  const file = $('picture').files && $('picture').files[0];
+  if (!file) return;
+  $('designGo').disabled = true;
+  $('designStatus').textContent = 'Designing…';
+  try {
+    const body = new FormData();
+    body.append('picture', file);
+    const res = await fetch('/api/design', { method: 'POST', body });
+    if (!res.ok) {
+      let message = 'That picture could not be designed.';
+      try { message = (await res.json()).error || message; } catch { /* image errors are JSON */ }
+      $('designStatus').textContent = message;
+      return;
+    }
+    const blob = await res.blob();
+    const previous = $('designResult').src;
+    $('designResult').src = URL.createObjectURL(blob);
+    if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
+    $('designResult').hidden = false;
+    $('designStatus').textContent = 'Designed from ' + file.name;
+  } catch {
+    $('designStatus').textContent = 'The easyedit app did not answer.';
+  } finally {
+    $('designGo').disabled = false;
+  }
+};
 
 document.addEventListener('click', async e => {
   const b = e.target.closest('button');

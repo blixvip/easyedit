@@ -29,6 +29,26 @@ _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 mimetypes.add_type("image/svg+xml", ".svg")  # missing from the Windows registry on some machines
 
 
+def picture_bytes(raw: bytes, content_type: str) -> bytes:
+    """The uploaded picture, whether the browser sent a form or raw image bytes."""
+    if "multipart/form-data" not in (content_type or "").lower():
+        return raw
+    match = re.search(r"boundary=([^;]+)", content_type, re.I)
+    if not match:
+        raise ValueError("choose a PNG, JPEG, or WebP picture")
+    boundary = match.group(1).strip().strip('"').encode()
+    for part in raw.split(b"--" + boundary):
+        if b"\r\n\r\n" not in part:
+            continue
+        header, body = part.split(b"\r\n\r\n", 1)
+        if b'name="picture"' not in header and b"name=picture" not in header:
+            continue
+        if body.endswith(b"\r\n"):
+            body = body[:-2]
+        return body
+    raise ValueError("choose a PNG, JPEG, or WebP picture")
+
+
 def safe_job(slug: str) -> Path | None:
     """A job directory inside jobs/, or None. Slugs come from the page and the URL."""
     slug = (slug or "").strip()
@@ -348,7 +368,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        raw = self.rfile.read(int(self.headers.get("Content-Length") or 0) or 0)
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > 26 * 1024 * 1024:
+            return self._json({"error": "picture is too large"}, 400)
+        raw = self.rfile.read(length) if length else b""
+        if path == "/api/design":
+            try:
+                from .design import design_picture
+                png = design_picture(picture_bytes(raw, self.headers.get("Content-Type", "")))
+            except ValueError as e:
+                return self._json({"error": str(e)}, 400)
+            return self._send(200, png, "image/png", {"Cache-Control": "no-store"})
         try:
             body = json.loads(raw or b"{}")
         except json.JSONDecodeError:
