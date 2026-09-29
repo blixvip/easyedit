@@ -8,6 +8,14 @@
 <p align="center"><b>Type a movie. Get a captioned speech + beat-cut fan edit.</b><br>
 Local-first · no API keys · works with your AI bot</p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111?style=flat-square" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-111?style=flat-square" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/node-22%2B-111?style=flat-square" alt="Node.js 22+">
+  <img src="https://img.shields.io/badge/render-HyperFrames-111?style=flat-square" alt="Rendered with HyperFrames">
+  <a href="https://github.com/blixvip/easyedit/stargazers"><img src="https://img.shields.io/github/stars/blixvip/easyedit?style=flat-square&color=111" alt="GitHub stars"></a>
+</p>
+
 ![easyedit web UI](docs/ui.png)
 
 Type a movie name and get a finished fan edit. It makes the kind that's all over social media: the film's best
@@ -18,6 +26,8 @@ python -m easyedit "The Wolf of Wall Street"
 ```
 
 The finished video is saved to `jobs/<movie>/<movie>.mp4` as 1920×1080 at 60fps.
+
+**Why it's fun:** one command does the whole edit. It picks the speech and the song, transcribes every word, tracks the face, finds the drop, and cuts to the beat. Everything runs on your own machine with your existing Claude Code or Codex login, and every stage is cached and editable, so you can steer it as much or as little as you like.
 
 ## What it does
 
@@ -81,6 +91,11 @@ A gallery of every edit you have made (thumbnail, length, the line it captions) 
 one. Running jobs show a live stage/progress bar and their log, and can be stopped from the page. Click a
 thumbnail to watch the edit in the browser.
 
+**Design from a picture** turns an imported PNG, JPEG or WebP (up to 25 MB) into a poster built from that
+picture's own colors and light (`POST /api/design`, implemented in `easyedit/design.py`).
+
+Set `EASYEDIT_PORT` to use a different port.
+
 **Connect** shows which AI accounts are signed in and checks this computer's tools. Its buttons open the sign-in
 for Claude or Codex. **Give it to your bot** has copy-ready prompts for an agent.
 
@@ -112,6 +127,7 @@ python -m easyedit "Scarface" --no-render             # build footage + edit.js 
 | `--language` | `en` | speech language (non-English uses whisper `large-v3`) |
 | `--cookies-from-browser` | | for age-restricted YouTube clips, e.g. `chrome` |
 | `--fresh` | | re-plan and re-pick instead of reusing the cache |
+| `-o, --output` | | write the finished MP4 to this path |
 
 Every stage caches its results in `jobs/<movie>/`: downloads, transcripts, shot and beat analysis, `plan.json`,
 `quote.json` and `sources.json` (which pins the chosen downloads, since YouTube search results drift).
@@ -179,12 +195,16 @@ easyedit/
   assemble.py   frame-exact timeline, footage cut, ducked soundtrack, edit.js
   render.py     parallel HyperFrames sections, mux, delivery encode
   web.py        the local web UI (web/index.html, web/assets/ logo + icon)
+  design.py     poster design from an imported picture (used by the web UI)
   doctor.py     setup check: AI accounts + tools (used by the UI and by agents)
   sheet.py      contact sheets for checking shots and the final render
   skill.py      installs the Claude Code skill
 template/       index.html + film.js: every visual effect, as a function of time
 skills/         the /easyedit skill for Claude Code
+tests/          unit tests (python -m pytest)
 AGENTS.md       the playbook for AI agents
 ```
 
-MIT license.
+## License
+
+[MIT](LICENSE).
