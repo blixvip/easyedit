@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -80,7 +79,3 @@ def read_json(path: Path):
 
 def clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
-
-
-def env_flag(name: str) -> bool:
-    return os.environ.get(name, "").lower() in ("1", "true", "yes")
