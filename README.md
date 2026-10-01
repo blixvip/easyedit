@@ -28,6 +28,32 @@ python -m easyedit "The Wolf of Wall Street"
 
 The finished video is saved to `jobs/<movie>/<movie>.mp4` as 1920×1080 at 60fps.
 
+## Example edits
+
+Every one of these came out of a single command. Click a thumbnail to get the full 1080p60 video (all of them are on the [Example edits release](https://github.com/blixvip/easyedit/releases/tag/examples)).
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/the-wolf-of-wall-street.mp4"><img src="docs/gallery/the-wolf-of-wall-street.jpg" alt="The Wolf of Wall Street"><br><b>The Wolf of Wall Street</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/interstellar.mp4"><img src="docs/gallery/interstellar.jpg" alt="Interstellar"><br><b>Interstellar</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/fight-club.mp4"><img src="docs/gallery/fight-club.jpg" alt="Fight Club"><br><b>Fight Club</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/inception.mp4"><img src="docs/gallery/inception.jpg" alt="Inception"><br><b>Inception</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/blade-runner-2049.mp4"><img src="docs/gallery/blade-runner-2049.jpg" alt="Blade Runner 2049"><br><b>Blade Runner 2049</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/obsession.mp4"><img src="docs/gallery/obsession.jpg" alt="Obsession"><br><b>Obsession</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/spider-man-brand-new-day.mp4"><img src="docs/gallery/spider-man-brand-new-day.jpg" alt="Spider-Man: Brand New Day"><br><b>Spider-Man: Brand New Day</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/the-odyssey.mp4"><img src="docs/gallery/the-odyssey.jpg" alt="The Odyssey"><br><b>The Odyssey</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/backrooms.mp4"><img src="docs/gallery/backrooms.jpg" alt="Backrooms"><br><b>Backrooms</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/resident-evil-2026.mp4"><img src="docs/gallery/resident-evil-2026.jpg" alt="Resident Evil (2026)"><br><b>Resident Evil (2026)</b></a></td>
+    <td align="center" width="33%"><a href="https://github.com/blixvip/easyedit/releases/download/examples/buddy.mp4"><img src="docs/gallery/buddy.jpg" alt="Buddy"><br><b>Buddy</b></a></td>
+  </tr>
+</table>
+
 **Why it's fun:** one command does the whole edit. It picks the speech and the song, transcribes every word, tracks the face, finds the drop, and cuts to the beat. Everything runs on your own machine with your existing Claude Code or Codex login, and every stage is cached and editable, so you can steer it as much or as little as you like.
 
 ## What it does
