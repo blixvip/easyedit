@@ -1,0 +1,18 @@
+{
+  "title": "Resident Evil",
+  "year": 2026,
+  "speech_scene": "Bryan the courier trapped in Raccoon City (trailer dialogue)",
+  "speech_query": "https://www.youtube.com/watch?v=SJPu1spHqfk",
+  "montage_queries": [
+    "https://www.youtube.com/watch?v=rf6XF1o1kgQ"
+  ],
+  "music_query": "dark intense horror trailer music industrial",
+  "palette": {
+    "positive": "#7CFC9A",
+    "negative": "#ff2e2e",
+    "gold": "#c9ff2e",
+    "cool": "#8be9fd"
+  },
+  "grade": "cool",
+  "source": "manual"
+}

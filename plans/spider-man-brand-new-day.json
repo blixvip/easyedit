@@ -1,0 +1,19 @@
+{
+  "title": "Spider-Man: Brand New Day",
+  "year": 2026,
+  "speech_scene": "Peter Parker, forgotten and alone, doing full-time Spider-Man work (trailer voiceover/dialogue)",
+  "speech_query": "https://www.youtube.com/watch?v=P3uI5sLosKU",
+  "montage_queries": [
+    "https://www.youtube.com/watch?v=8TZMtslA3UY",
+    "https://www.youtube.com/watch?v=2IafshpovT4"
+  ],
+  "music_query": "epic superhero orchestral trailer music instrumental",
+  "palette": {
+    "positive": "#ff5a5a",
+    "negative": "#2a4dff",
+    "gold": "#ffd23f",
+    "cool": "#7de3ff"
+  },
+  "grade": "teal-orange",
+  "source": "manual"
+}

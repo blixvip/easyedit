@@ -1,0 +1,19 @@
+{
+  "title": "Buddy",
+  "year": 2026,
+  "speech_scene": "Buddy the children's TV mascot turning sinister (trailer dialogue)",
+  "speech_query": "https://www.youtube.com/watch?v=O1fNEHX9tSM",
+  "montage_queries": [
+    "https://www.youtube.com/watch?v=g7GTfZ9Q76g",
+    "https://www.youtube.com/watch?v=FF_CGDlNygY"
+  ],
+  "music_query": "creepy circus music box eerie melody",
+  "palette": {
+    "positive": "#FFD1DC",
+    "negative": "#8B0000",
+    "gold": "#FFA500",
+    "cool": "#87CEEB"
+  },
+  "grade": "warm",
+  "source": "manual"
+}

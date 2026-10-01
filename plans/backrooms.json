@@ -1,0 +1,19 @@
+{
+  "title": "Backrooms",
+  "year": 2026,
+  "speech_scene": "You are not supposed to be here - lost in the Backrooms (trailer dialogue)",
+  "speech_query": "https://www.youtube.com/watch?v=0HjdiohVOik",
+  "montage_queries": [
+    "https://www.youtube.com/watch?v=tKGhxMi50y8",
+    "https://www.youtube.com/watch?v=LTHlnIN9Bdk"
+  ],
+  "music_query": "liminal space dark ambient drone instrumental",
+  "palette": {
+    "positive": "#e8f3a1",
+    "negative": "#ff3b30",
+    "gold": "#f5e960",
+    "cool": "#b8ffe3"
+  },
+  "grade": "neutral",
+  "source": "manual"
+}

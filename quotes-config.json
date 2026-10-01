@@ -1,0 +1,16 @@
+[
+  {
+    "slug": "resident-evil-2026",
+    "words_file": "words-SJPu1spHqfk.json",
+    "start_text": "i'm really sorry that we got disconnected",
+    "end_text": "talk to each other again",
+    "roles": {"sorry": "negative", "disconnected": "negative", "chance": "cool", "not": "negative", "know": "gold"}
+  },
+  {
+    "slug": "the-odyssey",
+    "words_file": "words-f_bKjZeJBBI.json",
+    "start_text": "you're pining me for a daddy",
+    "end_text": "i can still save them",
+    "roles": {"dad": "cool", "vengeance": "negative", "dead": "negative", "save": "positive", "home": "positive"}
+  }
+]

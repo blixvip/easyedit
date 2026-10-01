@@ -5,3 +5,5 @@ jobs/
 __pycache__/
 *.pyc
 models/
+*.log
+*.err

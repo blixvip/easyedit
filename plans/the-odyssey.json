@@ -1,0 +1,19 @@
+{
+  "title": "The Odyssey",
+  "year": 2026,
+  "speech_scene": "Odysseus (Matt Damon) vowing to return home to Ithaca (trailer dialogue)",
+  "speech_query": "https://www.youtube.com/watch?v=f_bKjZeJBBI",
+  "montage_queries": [
+    "https://www.youtube.com/watch?v=Mzw2ttJD2qQ",
+    "https://www.youtube.com/watch?v=b7zJY_brUFM"
+  ],
+  "music_query": "The Odyssey 2026 Ludwig Goransson trailer music epic",
+  "palette": {
+    "positive": "#ffd98a",
+    "negative": "#b33a3a",
+    "gold": "#f2c14e",
+    "cool": "#9fc5e8"
+  },
+  "grade": "warm",
+  "source": "manual"
+}
