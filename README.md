@@ -17,7 +17,23 @@ Local-first · no API keys · works with your AI bot</p>
   <a href="https://discord.gg/zEB4VjmfSb"><img src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
-![easyedit web UI](docs/ui.png)
+<p align="center">
+  <img src="docs/ui.png" width="860" alt="easyedit web UI">
+</p>
+
+<p align="center">
+  <a href="#example-edits">Example edits</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#setup">Setup</a> ·
+  <a href="#give-it-to-your-bot">Give it to your bot</a> ·
+  <a href="#web-ui">Web UI</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#when-something-goes-wrong">Troubleshooting</a> ·
+  <a href="#how-it-fits-together">How it fits together</a> ·
+  <a href="#community">Community</a>
+</p>
+
+---
 
 Type a movie name and get a finished fan edit. It makes the kind that's all over social media: the film's best
 speech with animated word-by-word captions, then a fast montage cut to the beat of a song.
