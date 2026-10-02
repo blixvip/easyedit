@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from .util import log, probe, read_json, write_json
-from .vision import FaceDetector, frames, letterbox
+from .vision import FaceDetector, frames, letterbox, proxy
 
 SAMPLE_FPS = 12
 HEAD_SKIP, TAIL_SKIP = 6.0, 12.0  # channel intros / end screens
@@ -23,7 +23,9 @@ def _cuts(diffs: np.ndarray) -> list[int]:
     return cuts
 
 
-def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
+def analyze(src: Path, cache: Path, faces: FaceDetector, whole: bool = False) -> dict:
+    """`whole`: the file is a clip, not an upload, so its first and last seconds are footage too."""
+    head, tail = (0.0, 0.0) if whole else (HEAD_SKIP, TAIL_SKIP)
     if cache.exists():
         cached = read_json(cache)
         if cached.get("v") == CACHE_VERSION:
@@ -31,9 +33,12 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
     import cv2
     info = probe(src)
     dur = info["duration"]
-    crop = letterbox(src, dur)
+    view = proxy(src)   # 4K sources are studied through a small copy; crops are scaled back up
+    k = info["width"] / probe(view)["width"]
+    view_crop = letterbox(view, dur)
+    crop = [int(round(v * k / 2)) * 2 for v in view_crop] if view_crop else None
     times, thumbs, grays, sats, grays_frac = [], [], [], [], []
-    for t, img in frames(src, SAMPLE_FPS, 160, crop=crop, height=90):
+    for t, img in frames(view, SAMPLE_FPS, 160, crop=view_crop, height=90):
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         times.append(t)
         grays.append(g)
@@ -43,32 +48,35 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
         # fraction of lit pixels with no color: footage has some, title cards are nearly all gray
         grays_frac.append(float(((hsv[..., 1] < 45) & (hsv[..., 2] > 60)).mean()))
     colorful = bool(sats) and float(np.median(sats)) > 25  # B&W films: the gray test means nothing
-    if len(grays) < SAMPLE_FPS * 3:
+    if len(grays) < SAMPLE_FPS * (1 if whole else 3):
         return {"source": str(src), "shots": [], "crop": crop}
     G = np.stack(grays).astype(np.float32)
     diffs = np.abs(np.diff(np.stack(thumbs), axis=0)).mean(axis=(1, 2, 3))
     bounds = [0] + [c + 1 for c in _cuts(diffs)] + [len(G)]
 
-    shots = []
+    shots, doubtful = [], []
     for a, b in zip(bounds, bounds[1:]):
         t0, t1 = times[a] + 0.1, times[b - 1] - 0.1
-        if t1 - t0 < 0.7 or t0 < HEAD_SKIP or t1 > dur - TAIL_SKIP:
+        if t1 - t0 < 0.7 or t0 < head or t1 > dur - tail:
             continue
         seg = G[a:b]
         bright, contrast = float(seg.mean()), float(seg.std())
         dark_frac = float((seg < 22).mean())
-        if bright < 18 or contrast < 14 or dark_frac > 0.85 or bright > 225:  # loose: horror/noir films live in the dark
-            continue
         motion = float(np.abs(np.diff(seg, axis=0)).mean()) if len(seg) > 1 else 0.0
         gray = float(np.mean(grays_frac[a:b]))
-        if colorful and gray > 0.55 and motion < 10:  # white-on-black title cards, logos, credits
-            continue
         mid = (a + b) // 2
         sharp = float(cv2.Laplacian(G[mid], cv2.CV_32F).var())
-        shots.append({"start": round(t0, 3), "end": round(t1, 3), "bright": bright, "contrast": contrast,
-                      "motion": motion, "sharp": sharp, "sat": float(np.mean(sats[a:b])),
-                      "gray": round(gray, 3),
-                      "thumb": [round(float(v), 1) for v in thumbs[mid].mean(axis=2).ravel()]})
+        shot = {"start": round(t0, 3), "end": round(t1, 3), "bright": bright, "contrast": contrast,
+                "motion": motion, "sharp": sharp, "sat": float(np.mean(sats[a:b])),
+                "gray": round(gray, 3),
+                "thumb": [round(float(v), 1) for v in thumbs[mid].mean(axis=2).ravel()]}
+        if (bright < 18 or contrast < 14 or dark_frac > 0.85 or bright > 225  # loose: horror/noir films live in the dark
+                or (colorful and gray > 0.55 and motion < 10)):  # white-on-black title cards, logos, credits
+            doubtful.append(shot)
+        else:
+            shots.append(shot)
+    if whole and not shots:  # a clip or a still someone chose by hand: it is wanted, however dark or flat it measures
+        shots = doubtful
 
     # face check on each shot's middle frame at higher res
     W = info["width"] if not crop else crop[0]
@@ -78,7 +86,7 @@ def analyze(src: Path, cache: Path, faces: FaceDetector) -> dict:
     for s in shots:
         s["face"] = None
         want.setdefault(int(round((s["start"] + s["end"]) / 2 * 2)), []).append(s)
-    for t, img in frames(src, 2, 480, crop=crop):
+    for t, img in frames(view, 2, 480, crop=view_crop):
         hit = want.get(int(round(t * 2)))
         if not hit:
             continue
@@ -127,8 +135,12 @@ def shot_id(analyses: list[dict], s: dict) -> str:
 
 
 def curate(pool: list[dict], analyses: list[dict], cur: dict) -> list[dict]:
-    """Apply a job's curate.json: drop `exclude` ids, put `pin` ids first (in order), mark `hero`."""
+    """Apply a job's curate.json: drop `exclude` ids, put `pin` ids first (in order), mark `hero`,
+    and attach each shot's own options (`shots`: move, speed, slip, fx)."""
     ids = {shot_id(analyses, s): s for s in pool}
+    for key, opts in (cur.get("shots") or {}).items():
+        if key in ids:
+            ids[key]["opts"] = opts
     for key in [*cur.get("exclude", []), *cur.get("pin", []), *([cur["hero"]] if cur.get("hero") else [])]:
         if key not in ids:
             log(f"curate: unknown shot {key}")

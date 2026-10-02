@@ -31,7 +31,7 @@ Choose bright, saturated palette colors that read on dark footage."""
 DEFAULT_PALETTE = {"positive": "#8dff8a", "negative": "#ff3b57", "gold": "#ffe27a", "cool": "#9ef3ff"}
 
 
-def make_plan(title: str, provider: str) -> dict:
+def make_plan(title: str, provider: str, anime: dict | None = None) -> dict:
     fallback = {
         "title": title,
         "year": None,
@@ -43,12 +43,21 @@ def make_plan(title: str, provider: str) -> dict:
         "grade": "neutral",
         "source": "fallback",
     }
-    reply = ask_json(PROMPT.format(title=title), SYSTEM, provider)
+    prompt = PROMPT.format(title=title)
+    if anime:   # an anime is planned as an anime: dub line, twixtor footage, its own look
+        from . import anime as ani
+        fallback.update(ani.plan_fallback(anime))
+        if anime.get("color"):
+            fallback["palette"] = {**DEFAULT_PALETTE, "gold": anime["color"]}
+        prompt = ani.plan_prompt(anime)
+    reply = ask_json(prompt, SYSTEM.replace("of films", "of films and anime") if anime else SYSTEM, provider)
     if not isinstance(reply, dict) or not reply.get("speech_query"):
         log("plan: using fallback search queries")
         return fallback
     plan = {**fallback, **{k: v for k, v in reply.items() if v}, "source": "llm"}
-    plan["palette"] = {**DEFAULT_PALETTE, **(reply.get("palette") or {})}
+    plan["palette"] = {**fallback["palette"], **(reply.get("palette") or {})}
+    if anime:
+        plan["grade"] = "anime"
     if not isinstance(plan["montage_queries"], list) or not plan["montage_queries"]:
         plan["montage_queries"] = fallback["montage_queries"]
     log(f"plan: {plan['speech_scene']}")

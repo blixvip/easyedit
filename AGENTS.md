@@ -111,6 +111,19 @@ If `python -m easyedit.web` is running (default `http://127.0.0.1:4331`):
 | `GET /api/log/<slug>` | the log tail and progress |
 | `POST /api/stop {"slug": "..."}` | stops a run |
 | `GET /api/setup` | the doctor report (accounts and tools) |
+| `GET /api/edit/<slug>/clips` | every source in the edit: role, origin, resolution, bitrate, shots |
+| `GET /api/edit/<slug>/clips/search?site=youtube\|clipcafe\|sakuga\|filmgrab&q=...` | clips on that site (empty `q` searches the film's title) |
+| `POST /api/edit/<slug>/clips/add {"item": <a search result, or {"site": "link", "url": "<link or file path>"}>, "role": "montage"\|"speech"}` | downloads the clip, reads its shots or words, adds it to the edit (follow `/api/log/<slug>`) |
+| `POST /api/edit/<slug>/clips/remove {"path": "...", "role": "montage"\|"speech"}` | takes a source out of the edit |
+
+| `GET /api/edit/<slug>/anime/search?q=...` then `POST /api/edit/<slug>/anime/set {"id": <AniList id or null>}` | links the edit to an anime; `twixtor`, `themes` (openings) and `sakuga` searches then look for that anime |
+
+Without the server: `python -m easyedit.clips <slug> montage '{"site": "link", "url": "https://..."}'`.
+The role is `montage`, `speech` or `music` (`music` replaces the song).
+
+**Anime.** A title AniList knows as an anime is built as one automatically (dub speech, twixtor and scenepack
+footage, anime grade); the log prints an `anime:` line. Pass `--anime` or `--no-anime` to decide it yourself.
+Speech is transcribed as English, so the speech clip must be the English dub.
 
 The user can watch progress in the browser while you poll.
 

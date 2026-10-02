@@ -5,16 +5,13 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
 
-from . import assemble, beats, fetch, plan as planner, quote, render, shots, transcribe
-from .util import JOBS, log, need, read_json, slugify, write_json
+from . import anime, assemble, beats, clips, fetch, plan as planner, quote, render, shots, transcribe, vision
+from .util import JOBS, log, need, probe, read_json, slugify, write_json
 from .vision import FaceDetector
-
-BUILD_VERSION = 4  # bump when assemble output changes
 
 
 def parse(argv=None):
@@ -28,6 +25,18 @@ def parse(argv=None):
     p.add_argument("--fps", type=int, default=60, choices=[24, 30, 60])
     p.add_argument("--montage-length", type=float, default=21.0, help="seconds of beat cuts")
     p.add_argument("--hero-length", type=float, default=3.4, help="seconds of the final mono shot")
+    p.add_argument("--cut-rate", default="normal", choices=["slow", "normal", "fast"],
+                   help="how often the montage cuts: slow holds shots twice as long, fast cuts twice as often")
+    p.add_argument("--no-velocity", action="store_true",
+                   help="keep every montage shot at real speed (no speed ramps)")
+    p.add_argument("--sfx", type=float, default=assemble.SFX_LEVEL,
+                   help="level of the built-in whooshes, riser and impacts, 0 to turn them off")
+    p.add_argument("--depth", action="store_true",
+                   help="read a depth map of the footage for background blur, subject pop, parallax and "
+                        "captions behind the subject (adds a few minutes)")
+    p.add_argument("--anime", action=argparse.BooleanOptionalAction, default=None,
+                   help="treat the title as an anime (twixtor and scenepack footage, dub line, anime grade); "
+                        "by default easyedit looks the title up and decides")
     p.add_argument("--language", default=None, help="speech language code (default en)")
     p.add_argument("--cookies-from-browser", default=None, help="for age-restricted YouTube clips")
     p.add_argument("--draft", action="store_true", help="30fps draft quality render")
@@ -35,6 +44,8 @@ def parse(argv=None):
     p.add_argument("--preview", nargs=2, type=float, metavar=("START", "END"),
                    help="render only this time range (seconds) for a quick look")
     p.add_argument("--fresh", action="store_true", help="ignore cached plan/pick for this movie")
+    p.add_argument("--refetch", action="store_true",
+                   help="look for better footage again and re-cut from it (keeps the plan and the song)")
     p.add_argument("-o", "--output", help="output mp4 path")
     return p.parse_args(argv)
 
@@ -56,48 +67,78 @@ def main(argv=None) -> None:
     if plan_file.exists() and not a.fresh:
         plan = read_json(plan_file)
     else:
-        plan = planner.make_plan(a.movie, a.llm)
+        plan = planner.make_plan(a.movie, a.llm, anime.detect(job, a.movie, a.anime))
         write_json(plan_file, plan)
+    ani = anime.of(job) if a.anime is not False else None
 
     # lock sources: YouTube search order drifts between runs, which would silently change the edit
     src_file = job / "sources.json"
     specs = {"speech": a.speech, "montage": a.montage, "music": a.music}
-    cached = read_json(src_file) if src_file.exists() and not a.fresh else None
+    cached = read_json(src_file) if src_file.exists() and not a.fresh and not a.refetch else None
     if cached and cached.get("specs") == specs and all(
             Path(f).exists() for k in ("speech", "montage", "music") for f in cached[k]):
         speech_files, montage_files, music_files = ([Path(f) for f in cached[k]]
                                                     for k in ("speech", "montage", "music"))
         log("sources: reusing locked downloads")
     else:
-        speech_files = fetch.resolve(a.speech, plan["speech_query"], dl / "speech", n=2, min_dur=20,
-                                     max_dur=600, cookies=a.cookies_from_browser)
+        title = plan["title"]
+        if a.speech:
+            speech_files = fetch.resolve(a.speech, plan["speech_query"], dl / "speech", n=2, min_dur=20,
+                                         max_dur=600, cookies=a.cookies_from_browser)
+        else:
+            speech_files = fetch.best_sources(
+                [plan["speech_query"], f"{title} {plan.get('speech_scene', '')[:60]} "
+                                       f"{'english dub' if ani else 'scene 4K'}"], dl / "speech",
+                kind="speech", movie=anime.names(ani) if ani else title, anime=bool(ani), n=2, min_dur=20, max_dur=600, cookies=a.cookies_from_browser)
+            # a clip with subtitles burned in goes last: the quote is picked from the clean one when it can be
+            speech_files.sort(key=lambda f: vision.subtitle_band(f, probe(f)["duration"]) is not None)
         montage_files = []
-        for spec in (a.montage or plan["montage_queries"][:2]):
-            try:
-                montage_files += fetch.resolve(spec, spec, dl / "montage", n=1, min_dur=60, max_dur=1500,
-                                               cookies=a.cookies_from_browser)
+        if a.montage:
+            for spec in a.montage:
+                try:
+                    montage_files += fetch.resolve(spec, spec, dl / "montage", n=1, min_dur=60, max_dur=1500,
+                                                   cookies=a.cookies_from_browser)
+                except Exception as e:
+                    log(f"montage source skipped: {e}")
+        else:
+            try:  # clean scene compilations first, the planner's own ideas (often trailers) as a fallback
+                montage_files = fetch.best_sources(
+                    [*(anime.footage_queries(ani) if ani else
+                       [f"{title} 4K visuals", f"{title} 4K scenes", f"{title} amazing shots", f"{title} scenepack 4K"]),
+                     *plan["montage_queries"][:2]], dl / "montage", kind="montage",
+                    movie=anime.names(ani) if ani else title, anime=bool(ani), n=2,
+                    min_dur=40, max_dur=1500, cookies=a.cookies_from_browser)
             except Exception as e:
-                log(f"montage source skipped: {e}")
+                log(f"montage sources: {e}")
         if not montage_files:
             montage_files = speech_files
+        if a.refetch:  # choices that named shots of the old footage no longer mean anything
+            old = job / "curate.json"
+            if old.exists():
+                old.replace(job / "curate.before-refetch.json")
         music_files = fetch.resolve(a.music, a.music or plan["music_query"], dl / "music", n=1, min_dur=60,
                                     max_dur=900, audio_only=True, cookies=a.cookies_from_browser)
+        # clips added by hand in the editor stay in the edit when the sources are looked up again
+        speech_files = speech_files + clips.extras(job, "speech", speech_files)
+        montage_files = montage_files + clips.extras(job, "montage", montage_files)
+        music_files = clips.extras(job, "music", [])[-1:] or music_files   # a song picked in the editor stays the song
         write_json(src_file, {"specs": specs, "speech": [str(f) for f in speech_files],
                               "montage": [str(f) for f in montage_files],
                               "music": [str(f) for f in music_files]})
 
     pick_file = job / "quote.json"
-    clips = [transcribe.transcribe(f, job / "work" / f"words-{f.stem}.json", a.language) for f in speech_files]
+    spoken = [transcribe.transcribe(f, job / "work" / f"words-{f.stem}.json", a.language) for f in speech_files]
     if pick_file.exists() and not a.fresh and read_json(pick_file).get("files") == [str(f) for f in speech_files]:
         q = read_json(pick_file)
     else:
-        q = quote.choose(clips, plan, a.llm)
+        q = quote.choose(spoken, plan, a.llm)
         q["files"] = [str(f) for f in speech_files]
         write_json(pick_file, q)
 
     transcribe.release()
     fd = FaceDetector()
-    analyses = [shots.analyze(f, job / "work" / f"shots-{f.stem}.json", fd) for f in montage_files]
+    analyses = [shots.analyze(f, job / "work" / f"shots-{f.stem}.json", fd, clips.whole(job, f))
+                for f in montage_files]
     pool = shots.rank(analyses)
     curate_file = job / "curate.json"
     curation = read_json(curate_file) if curate_file.exists() else {}
@@ -106,10 +147,8 @@ def main(argv=None) -> None:
     log(f"shots: {len(pool)} candidates across {len(analyses)} source(s)")
     music_beats = beats.analyze(music_files[0], job / "work" / f"beats-{music_files[0].stem}.json")
 
-    key = hashlib.sha256(json.dumps([q, plan, str(music_files[0]), a.fps, a.montage_length,
-                                     a.hero_length, BUILD_VERSION,
-                                     [(an["source"], an["crop"], len(an["shots"])) for an in analyses], curation],
-                                    sort_keys=True, default=str).encode()).hexdigest()
+    key = assemble.build_key(q, plan, music_files[0], a.fps, a.montage_length, a.hero_length, analyses, curation,
+                             a.cut_rate, not a.no_velocity, a.sfx)
     key_file = job / "work" / "build.key"
     edit_js = job / "render" / "edit.js"
     if (key_file.exists() and key_file.read_text() == key and edit_js.exists()
@@ -119,8 +158,15 @@ def main(argv=None) -> None:
     else:
         edit = assemble.build(job, plan=plan, quote=q, speech=speech_files[q["clip"]], analyses=analyses,
                               pool=pool, music=music_files[0], music_beats=music_beats, fps=a.fps,
-                              montage_len=a.montage_length, hero_len=a.hero_length)
+                              montage_len=a.montage_length, hero_len=a.hero_length, cut_rate=a.cut_rate,
+                              velocity=not a.no_velocity, sfx=a.sfx, cuts=curation.get("cuts"))
         key_file.write_text(key)
+    depth_file = job / "render" / "depth.mp4"
+    if a.depth:
+        from . import depth
+        depth.ensure(job)
+    elif depth_file.exists():
+        depth_file.unlink()  # depth was switched off; a stale map must not ride along
     if a.no_render:
         log(f"built {job / 'render'}; skipping render")
         return

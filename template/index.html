@@ -6,27 +6,31 @@
 <style>
 @font-face { font-family: EECaption; src: url('fonts/Montserrat.ttf'); font-weight: 100 900; }
 @font-face { font-family: EEDisplay; src: url('fonts/Anton.ttf'); }
+@font-face { font-family: EESerif; font-style: italic; src: url('fonts/PlayfairDisplay-Italic.ttf'); font-weight: 400 900; }
+@font-face { font-family: EETrailer; src: url('fonts/Cinzel.ttf'); font-weight: 400 900; }
+@font-face { font-family: EEType; src: url('fonts/SpecialElite.ttf'); }
+@font-face { font-family: EEVhs; src: url('fonts/VT323.ttf'); }
+@font-face { font-family: EEScript; src: url('fonts/Caveat.ttf'); font-weight: 400 700; }
+@font-face { font-family: EEMarker; src: url('fonts/PermanentMarker.ttf'); }
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }
 #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#depth { position: absolute; left: 0; top: 0; width: 640px; height: 360px; opacity: 0; }
 #footage { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
+#gl { position: absolute; inset: 0; width: 1920px; height: 1080px; }
 #fx { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <filter id="dirblur" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur id="dirblurNode" stdDeviation="0 0"/>
-    </filter>
-  </defs>
-</svg>
 <main id="stage" data-composition-id="easyedit" data-start="0" data-duration="__DURATION__"
       data-width="1920" data-height="1080" data-fps="__FPS__" data-no-timeline>
   <video id="footage" class="clip" src="footage.mp4" data-start="0" data-duration="__DURATION__"
          data-media-start="__MEDIA_START__" data-track-index="0" muted playsinline preload="auto"></video>
+__DEPTH__
+  <canvas id="gl" class="clip" width="1920" height="1080" data-start="0" data-duration="__DURATION__"
+          data-track-index="2"></canvas>
   <canvas id="fx" class="clip" width="1920" height="1080" data-start="0" data-duration="__DURATION__"
-          data-track-index="1"></canvas>
+          data-track-index="3"></canvas>
 </main>
 <script>window.SEGMENT_START = __SEGMENT_START__;</script>
 <script src="edit.js"></script>

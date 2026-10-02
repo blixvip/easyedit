@@ -54,6 +54,28 @@ Every one of these came out of a single command. Click a thumbnail to get the fu
   </tr>
 </table>
 
+## The editor
+
+Every finished edit has an **Edit** button on the web page (`python -m easyedit.web`). It opens a timeline editor made for fan edits of films and anime:
+
+- **Live preview.** The same film layer that renders the final video plays in the page, so captions, colours, effects and the title change as you edit them.
+- **Shader film layer.** The footage runs through a WebGL pass: camera moves with real motion blur, bloom and halation, lens fringing, sharpening, grain, and a twelve-look colour grade (cinematic, teal and orange, anime, dream, blood, ice and more).
+- **Depth.** Switch Depth on and easyedit reads how far away everything in the footage is (Depth Anything V2, on your GPU). Then captions can sit behind people, the background can blur, the subject can stand out, and the camera gets 3D parallax.
+- **Shots.** Every shot easyedit found, with thumbnails. Drag one onto the timeline to swap it in, drag shots to reorder them, remove the ones you don't want, pick the final shot.
+- **Footage.** Every clip the edit is cut from, with what it is used for (speech, shots, song), where it came from, and its real resolution and bitrate, so a soft source is flagged before you cut from it. Search YouTube (scenepacks and scenes, up to 4K), clip.cafe (find a line by its words), Sakugabooru (anime cuts) and Film-Grab (stills, added as slow push-in shots) from the panel, watch a clip in the viewer, then add it for the shots or as the speech. Paste any link or the path of a file on your computer to bring that in. Yarn and PlayPhrase only answer a browser, so they open there. Removing a clip deletes its download and the shot choices that named it; `clips.json` in the job remembers where each added clip came from.
+- **Anime.** Type an anime's name and easyedit knows it is one (it checks AniList): the speech comes from the English dub, the montage from twixtor clips and scenepacks instead of trailers, and the grade is the anime look. `--anime` forces it, `--no-anime` switches it off. In the editor's Footage tab the Anime group shows the show's card and its characters; click a character to find their footage. Three sites are built for it: **Twixtor** (raw clips ranked the way editors label them), **Openings** (every opening and ending from AnimeThemes, creditless Blu-ray when there is one, as footage or as the song) and **Sakugabooru** (searched by the show's romaji name for you). Any edit can be linked to an anime, so a film edit can borrow anime footage too.
+- **Song.** Any opening, YouTube result, link or file can replace the edit's song from the Footage tab; the beat is read again and the next Apply changes recuts to it.
+- **Styles.** One click sets a whole look: Velocity, Dark cinematic, Anime AMV, VHS tape or Clean. Each sets the grade, the beat tools and a pattern of effects across the shots; undo it or tweak anything after.
+- **Velocity.** Montage shots get speed ramps (rush in and settle into slow motion, hang then snap away, slow in the middle) with blended frames, so the slow parts are smooth. Set a ramp per shot or switch velocity off.
+- **Sound design.** A whoosh on every cut, a riser into the drop and an impact on the drop and the final shot, synthesized on the spot (no sample packs). One slider sets the level.
+- **Shot tools.** Per shot: the camera move into it (punch in, whip, slide, spin, pull back, bounce, hard cut), effects (shake, beat twitch, zooms, fisheye hit, impact frames, beat strobe, colour split, glitch, VHS, glow, light leak, neon edges, mirror, posterize, pixelate, black and white, invert), subject effects that use the depth map (cut-out stroke, aura glow, echo copies, colour on black and white), speed, and which part of the shot is used.
+- **Beat tools.** How often the montage cuts (slow, normal, fast), how hard the zoom pulse, flash and camera shake hit on each beat, and the montage and final shot lengths.
+- **Captions.** Click a word to colour it, fix its spelling, nudge its timing or start a new line. The Speech tab moves where the speech starts and ends.
+- **Look.** How caption words arrive (rise, drop in, from left or right, pop, wiggle, wave), font, colours, size, position and glow; motion blur, bloom, sharpen and lens amounts; cinema bars, title, frame rate.
+- **Ask AI.** Say what you want changed and your Claude or Codex account edits the captions and look. Undo works on everything.
+
+**Apply changes** recuts the footage (about a minute). **Export** renders the video. The editor saves into the job's own files (`plan.json`, `quote.json`, `curate.json`, `settings.json`), so the command line and your bot see the same edit.
+
 **Why it's fun:** one command does the whole edit. It picks the speech and the song, transcribes every word, tracks the face, finds the drop, and cuts to the beat. Everything runs on your own machine with your existing Claude Code or Codex login, and every stage is cached and editable, so you can steer it as much or as little as you like.
 
 ## What it does

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>easyedit preview</title>
+<style>
+@font-face { font-family: EECaption; src: url('fonts/Montserrat.ttf'); font-weight: 100 900; }
+@font-face { font-family: EEDisplay; src: url('fonts/Anton.ttf'); }
+@font-face { font-family: EESerif; font-style: italic; src: url('fonts/PlayfairDisplay-Italic.ttf'); font-weight: 400 900; }
+@font-face { font-family: EETrailer; src: url('fonts/Cinzel.ttf'); font-weight: 400 900; }
+@font-face { font-family: EEType; src: url('fonts/SpecialElite.ttf'); }
+@font-face { font-family: EEVhs; src: url('fonts/VT323.ttf'); }
+@font-face { font-family: EEScript; src: url('fonts/Caveat.ttf'); font-weight: 400 700; }
+@font-face { font-family: EEMarker; src: url('fonts/PermanentMarker.ttf'); }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#depth { position: absolute; left: 0; top: 0; width: 640px; height: 360px; opacity: 0; }
+#footage { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
+#gl { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#fx { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+</style>
+</head>
+<body>
+<main id="stage">
+  <video id="footage" muted playsinline preload="auto"></video>
+  <canvas id="gl" width="1920" height="1080"></canvas>
+  <canvas id="fx" width="1920" height="1080"></canvas>
+</main>
+<audio id="sound" preload="auto"></audio>
+<script>
+// The same film.js that renders the final video, driven by a playing <video> instead of HyperFrames.
+(async () => {
+  const v = new URLSearchParams(location.search).get('v') || '0';
+  const load = src => new Promise((ok, bad) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = bad;
+    document.body.appendChild(s);
+  });
+  const video = document.getElementById('footage'), sound = document.getElementById('sound');
+  video.src = 'footage.mp4?v=' + v;
+  sound.src = 'soundtrack.m4a?v=' + v;
+  // the depth map, when this cut has one: a second muted video kept in step with the footage
+  let depth = null;
+  if ((await fetch('depth.mp4?v=' + v, { method: 'HEAD' }).catch(() => ({ ok: false }))).ok) {
+    depth = document.createElement('video');
+    depth.id = 'depth'; depth.muted = true; depth.playsInline = true; depth.preload = 'auto';
+    depth.src = 'depth.mp4?v=' + v;
+    video.after(depth);
+  }
+  await load('edit.js?v=' + v);
+  let over = null;
+  try { over = parent.easyeditOverride && parent.easyeditOverride(); } catch { /* opened on its own */ }
+  if (over) Object.assign(window.EDIT, over);
+  await load('film.js?v=' + v);
+
+  const E = window.EDIT, total = E.frames / E.fps;
+  let playing = false;
+  const tell = () => { try { parent.easyeditTick && parent.easyeditTick(video.currentTime, playing); } catch { /* alone */ } };
+  function frame() {
+    window.drawFrame(video.currentTime);
+    if (depth && Math.abs(depth.currentTime - video.currentTime) > (playing ? 0.07 : 0.001)) depth.currentTime = video.currentTime;
+    if (playing) {
+      if (Math.abs(sound.currentTime - video.currentTime) > 0.12) sound.currentTime = video.currentTime;
+      if (video.ended || video.currentTime >= total - 0.02) api.pause();
+    }
+    tell();
+    requestAnimationFrame(frame);
+  }
+  const api = window.player = {
+    total,
+    get time() { return video.currentTime; },
+    get playing() { return playing; },
+    play() {
+      if (video.currentTime >= total - 0.05) video.currentTime = 0;
+      sound.currentTime = video.currentTime;
+      playing = true;
+      video.play().catch(() => { playing = false; });
+      if (depth) { depth.currentTime = video.currentTime; depth.play().catch(() => {}); }
+      sound.play().catch(() => {});
+    },
+    pause() { playing = false; video.pause(); sound.pause(); if (depth) depth.pause(); },
+    seek(t) { video.currentTime = Math.max(0, Math.min(total - 0.001, t)); if (playing) sound.currentTime = video.currentTime; },
+    volume(x) { sound.volume = x; },
+    // captions and the title are read every frame, so these show up without a reload
+    setCaptions(lines) { E.captions.length = 0; E.captions.push(...lines); },
+    setTitle(text) { E.title = text; },
+    // camera moves and effects per shot; needs the shot ids that newer builds write into edit.js
+    setShotOpts(byId) {
+      for (const s of E.shots) {
+        if (!s.id) return false;
+        const o = byId[s.id] || {};
+        delete s.move; delete s.fx; delete s.ease; delete s.grade; delete s.tf;
+        if (o.move) s.move = o.move;
+        if (o.ease) s.ease = o.ease;
+        if (o.grade) s.grade = o.grade;
+        if (o.tf) s.tf = o.tf;
+        if (o.fx && o.fx.length) s.fx = o.fx;
+      }
+      return true;
+    },
+  };
+  requestAnimationFrame(frame);
+  try { parent.easyeditReady && parent.easyeditReady(api); } catch { /* alone */ }
+})();
+</script>
+</body>
+</html>

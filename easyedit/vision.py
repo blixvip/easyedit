@@ -43,6 +43,27 @@ def frames(path: Path, fps: float, width: int, start: float = 0.0, duration: flo
         proc.wait()
 
 
+def proxy(src: Path) -> Path:
+    """A small copy of a 4K source for everything that only needs to look at it (shot finding,
+    face checks, thumbnails, the editor's source monitor). The edit itself is cut from the original."""
+    from .util import probe
+    if probe(src).get("height", 0) <= 1080:
+        return src
+    out = src.parent / "proxy" / f"{src.stem}.mp4"
+    if out.exists() and out.stat().st_mtime >= src.stat().st_mtime:
+        return out
+    out.parent.mkdir(parents=True, exist_ok=True)
+    log(f"proxy: making a small working copy of {src.name}")
+    vf = "scale=-2:540"
+    if probe(src).get("hdr"):   # shrink first, then map HDR brightness down so stills and shot scores look right
+        vf += ",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+    tail = ["-i", str(src), "-vf", vf, "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", str(out)]
+    for accel in (["-hwaccel", "auto"], []):   # the GPU decodes 4K far faster when it can
+        if subprocess.run(["ffmpeg", "-v", "error", "-y", *accel, *tail]).returncode == 0 and out.exists():
+            return out
+    return src
+
+
 def letterbox(path: Path, duration: float) -> tuple[int, int, int, int] | None:
     """Detect the real picture area. Returns ffmpeg crop (w,h,x,y) or None.
 
@@ -121,3 +142,36 @@ def cover_map(src_w: int, src_h: int, out_w: int, out_h: int):
     dw, dh = src_w * scale, src_h * scale
     ox, oy = (out_w - dw) / 2, 0.0  # top-anchored, matching assemble._vf
     return lambda nx, ny: (ox + nx * dw, oy + ny * dh)
+
+
+def subtitle_band(path: Path, duration: float) -> float | None:
+    """Where burned-in subtitles start, as a fraction of the frame height, or None if there are none.
+
+    Subtitle text is rows of bright pixels switching on and off many times, low in the frame,
+    in most frames. The same test higher up the frame rules out scenes that are just busy."""
+    import cv2
+    hits, tops, seen = 0, [], 0
+    for k in range(14):
+        cap = None
+        t = duration * (k + 0.5) / 14
+        for _, img in frames(path, 1, 640, start=t, duration=1.0, height=360):
+            cap = img
+            break
+        if cap is None:
+            continue
+        seen += 1
+        g = cv2.cvtColor(cap, cv2.COLOR_BGR2GRAY)[:, 77:563]
+
+        def text_rows(band):
+            mask = band > 205
+            flips = np.abs(np.diff(mask.astype(np.int8), axis=1)).sum(axis=1)
+            return (flips >= 14) & (mask.mean(axis=1) < 0.45)
+
+        low, mid = text_rows(g[259:]), text_rows(g[90:216])
+        if low.sum() >= 5 and low.sum() > mid.sum() * 2:
+            hits += 1
+            tops.append((259 + int(np.argmax(low))) / 360)
+    if not seen or hits / seen < 0.4:
+        return None
+    return max(0.6, min(tops) - 0.02)
+

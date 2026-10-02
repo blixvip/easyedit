@@ -3,229 +3,519 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>easyedit</title>
+<title>easyedit · Projects</title>
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <style>
   :root {
-    --bg: #0b0c0f; --panel: #14161b; --panel-2: #1b1e25; --line: #272b34;
-    --text: #eef0f4; --dim: #9aa2b1; --accent: #ffe27a; --good: #8dff8a; --bad: #ff5570;
+    --bg: #161616; --panel: #232323; --panel-2: #2d2d2d; --panel-3: #383838; --well: #1a1a1a; --bar: #1e1e1e;
+    --line: #0f0f0f; --line-2: #474747; --text: #dcdcdc; --dim: #9a9a9a; --faint: #6a6a6a;
+    --accent: #2d8ceb; --blue: #4fa6ff; --good: #62d08c; --bad: #f0566b; --warn: #e9b53c;
+    --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
-    padding: 28px 22px 80px; max-width: 1180px; margin-inline: auto;
-  }
-  header { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
-  h1 { margin: 0; line-height: 0; }
-  h1 img { height: 34px; width: auto; display: block; }
-  header p { color: var(--dim); margin: 0; font-size: 13px; }
-  nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
-  nav a { color: var(--dim); text-decoration: none; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; }
-  nav a:hover { color: var(--text); background: var(--panel); }
-  a { color: var(--accent); }
-  .notice { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap;
-            margin-bottom: 12px; background: #1d1a0e; border: 1px solid #3a3722; color: #e9dfb4;
-            border-radius: 12px; padding: 10px 14px; font-size: 13.5px; }
-  .notice span, .section-lead, .acct p, .bot p { min-width: 0; overflow-wrap: anywhere; }
-  .notice[hidden] { display: none; }
-  .notice a { white-space: nowrap; font-weight: 600; }
-  .writer { margin-left: 14px; font-size: 13px; color: var(--dim); }
-  .writer b { color: var(--good); font-weight: 600; }
-  .section-lead { color: var(--dim); margin: -4px 0 14px; font-size: 14px; max-width: 760px; }
-  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
-  .acct { display: flex; flex-direction: column; gap: 8px; }
-  .acct .row, .bot .row { justify-content: space-between; flex-wrap: wrap; }
-  .acct h3, .bot h3, .card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: #4a505c; display: inline-block; margin-right: 9px; }
-  .dot.on { background: var(--good); box-shadow: 0 0 10px #8dff8a66; }
-  .acct p, .bot p { margin: 0; color: var(--dim); font-size: 13.5px; }
-  .acct .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
-  .acct button, .bot button { padding: 8px 13px; font-size: 13px; border-radius: 8px; }
-  code { font: 12.5px ui-monospace, Consolas, monospace; background: #0e1014; border: 1px solid var(--line);
-         border-radius: 6px; padding: 1px 6px; color: #d6dbe4; }
-  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-  .checks li { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; }
-  .checks .st { width: 18px; flex: none; text-align: center; font-weight: 700; }
-  .checks .ok { color: var(--good); } .checks .bad { color: var(--bad); }
-  .checks .d { color: var(--dim); }
-  .bot { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-  .bot pre { max-height: none; margin: 0; flex: 1; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-  .step { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
-  .prompt { display: flex; gap: 10px; }
-  input, select { background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 10px; padding: 12px 14px; font: inherit; width: 100%; }
-  input:focus, select:focus { outline: 2px solid #46506a; }
-  input[type="file"] { padding: 10px 12px; }
-  .design-result { display: block; width: min(100%, 420px); margin-top: 16px; border-radius: 16px; background: #05060a; }
-  button { background: var(--accent); color: #17181c; border: 0; border-radius: 10px; padding: 12px 20px;
-    font: 600 15px/1 "Segoe UI", system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
-  button:hover { filter: brightness(1.08); }
-  button.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line); font-weight: 500; }
-  button.ghost:hover { color: var(--text); }
-  button:disabled { opacity: .5; cursor: default; }
-  .opts { margin-top: 14px; display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  [hidden] { display: none !important; }
+  html { scrollbar-gutter: stable; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 13px/1.5 var(--ui); -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: #1c1c1c; }
+  ::-webkit-scrollbar-thumb { background: #3d3d3d; border-radius: 99px; border: 3px solid #1c1c1c; }
+  ::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
+  a { color: var(--blue); }
+  svg.i { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round;
+          stroke-linejoin: round; flex: none; display: block; overflow: visible; }
+  svg.i .t { fill: currentColor; fill-opacity: .2; stroke: none; }
+  svg.i .f { fill: currentColor; stroke: none; }
+  svg.i .d { stroke-width: 1.2; stroke-dasharray: 2 2.4; opacity: .75; }
+
+  button, .btn { background: var(--panel-2); color: var(--text); border: 1px solid var(--line-2); border-radius: 4px; height: 28px; padding: 0 12px;
+           font: 400 12.5px/1 var(--ui); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px;
+           text-decoration: none; transition: border-color .1s, background .1s, color .1s; }
+  button:hover, .btn:hover { border-color: #6b6b6b; background: var(--panel-3); color: #fff; }
+  button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary, .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover, .btn.primary:hover { background: #4a9df0; border-color: #4a9df0; }
+  button.quiet { background: transparent; border-color: transparent; color: var(--dim); }
+  button.quiet:hover { background: var(--panel-3); color: #fff; }
+  button.icon { width: 28px; padding: 0; justify-content: center; }
+  input, select { background: var(--well); border: 1px solid #3a3a3a; color: var(--text); border-radius: 4px; height: 28px; padding: 0 9px;
+                  font: 400 12.5px/1.4 var(--ui); width: 100%; }
+  input[type=file] { height: auto; padding: 6px 9px; }
+  select { cursor: pointer; }
+  label { display: block; font-size: 11.5px; color: var(--dim); margin-bottom: 4px; }
+  code { font: 11.5px var(--mono); background: var(--well); border: 1px solid #333; border-radius: 3px; padding: 1px 5px; color: #d6d6d6; }
+  pre { background: var(--well); border: 1px solid #333; border-radius: 4px; margin: 8px 0 0; padding: 9px 11px; max-height: 190px; overflow: auto;
+        font: 11.5px/1.55 var(--mono); color: #b9b9b9; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  /* app bar */
+  #bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: stretch; gap: 4px; height: 44px; padding: 0 18px; background: var(--bar);
+         border-bottom: 1px solid var(--line); }
+  #bar .logo { display: flex; align-items: center; padding-right: 16px; margin-right: 8px; border-right: 1px solid #333; align-self: center; height: 22px; }
+  #bar .logo img { height: 20px; display: block; }
+  #tabs { display: flex; }
+  #tabs a { display: flex; align-items: center; gap: 7px; padding: 0 13px; color: var(--dim); text-decoration: none; border-top: 2px solid transparent;
+            border-bottom: 2px solid transparent; font-size: 12.5px; }
+  #tabs a:hover { color: #fff; }
+  #tabs a.on { color: #f0f0f0; border-bottom-color: var(--accent); }
+  #tabs a em { font-style: normal; color: var(--blue); font-size: 11.5px; }
+  #tabs a i { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+  #bar .gap { flex: 1; }
+  #writer { align-self: center; color: var(--dim); font-size: 12px; white-space: nowrap; }
+  #writer b { color: var(--good); font-weight: 600; }
+  #bar .ext { align-self: center; color: var(--dim); text-decoration: none; padding: 0 8px; font-size: 12.5px; }
+  #bar .ext:hover { color: #fff; }
+
+  main { max-width: 1320px; margin: 0 auto; padding: 22px 22px 80px; }
+  .page { display: none; }
+  .page.on { display: block; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--dim); margin: 28px 0 10px; font-weight: 600; }
+  .lead { color: var(--dim); margin: 0 0 14px; max-width: 760px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .notice { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 14px; background: #2a2413; border: 1px solid #4a3f1c;
+            color: #ecdca6; border-radius: 6px; padding: 9px 14px; }
+
+  /* start: a new project, and the one you were on */
+  #start { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  #start.solo { grid-template-columns: 1fr; }
+  #new h1 { margin: 0 0 3px; font-size: 19px; font-weight: 600; color: #f2f2f2; }
+  #new p { margin: 0 0 14px; color: var(--dim); }
+  .prompt { display: flex; gap: 8px; }
+  .prompt input { height: 38px; font-size: 14.5px; padding: 0 12px; }
+  .prompt button { height: 38px; padding: 0 18px; font-size: 13.5px; }
+  .optbar { display: flex; align-items: center; gap: 12px; margin-top: 11px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
+  .seg { display: inline-flex; }
+  .seg button { border-radius: 0; margin-left: -1px; height: 24px; padding: 0 10px; color: var(--dim); font-size: 12px; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  .seg button.on { background: #17324f; color: #fff; border-color: var(--accent); position: relative; z-index: 1; }
+  .opts { margin-top: 14px; display: none; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 12px; padding-top: 14px; border-top: 1px solid #333; }
   .opts.open { display: grid; }
-  label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 5px; letter-spacing: .3px; }
-  .optbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
-  .toggle { background: none; border: 0; color: var(--dim); font-size: 13px; padding: 0; cursor: pointer; }
-  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim);
-       margin: 34px 0 12px; font-weight: 600; }
-  .runs { display: grid; gap: 12px; }
-  .bar { height: 6px; background: #23262e; border-radius: 99px; overflow: hidden; margin: 10px 0 8px; }
-  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--good));
-           transition: width .5s ease; }
-  pre { background: #0e1014; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0 0;
-        padding: 10px 12px; max-height: 190px; overflow: auto; font: 12px/1.55 ui-monospace, Consolas, monospace;
-        color: #b9c0cc; white-space: pre-wrap; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-          display: flex; flex-direction: column; }
-  .tile .thumb { aspect-ratio: 16/9; background: #05060a center/cover no-repeat; cursor: pointer; position: relative; }
-  .tile .thumb::after { content: "▶"; position: absolute; inset: 0; display: grid; place-items: center;
-    font-size: 30px; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.8); opacity: .88; }
-  .tile .thumb.empty::after { content: ""; }
-  .tile .body { padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-  .tile h3 { margin: 0; font-size: 16px; }
-  .meta { color: var(--dim); font-size: 12.5px; }
-  .scene { color: #7f879a; font-size: 11.5px; letter-spacing: .4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-           overflow: hidden; }
-  .tile .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
-  .tile .actions button { padding: 7px 11px; font-size: 12.5px; border-radius: 8px; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--accent);
-          border: 1px solid #3a3722; background: #241f0f; border-radius: 99px; padding: 2px 9px; }
-  .pill.on { color: var(--good); border-color: #24402a; background: #122016; }
-  .pill.err { color: var(--bad); border-color: #40222a; background: #26141a; }
-  dialog { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 16px;
-           padding: 0; max-width: min(1100px, 92vw); }
-  dialog::backdrop { background: rgba(2,3,6,.78); }
+  #resume { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); padding: 0; overflow: hidden; }
+  #resume .pic { background: #000 center/cover; min-height: 150px; position: relative; display: block; }
+  #resume .info { padding: 15px 16px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  #resume .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--blue); font-weight: 600; }
+  #resume h3 { margin: 0; font-size: 18px; font-weight: 600; color: #f2f2f2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #resume .acts { margin-top: auto; padding-top: 10px; }
+
+  /* the projects */
+  #tools { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; flex-wrap: wrap; }
+  #tools h2 { margin: 0 6px 0 0; }
+  .find { position: relative; width: 240px; }
+  .find svg.i { position: absolute; left: 9px; top: 7px; color: var(--faint); pointer-events: none; }
+  .find input { padding-left: 29px; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chips button { height: 26px; border-radius: 13px; padding: 0 11px; color: var(--dim); background: transparent; border-color: #3a3a3a; font-size: 12px; }
+  .chips button.on { background: #17324f; color: #fff; border-color: var(--accent); }
+  .chips button em { font-style: normal; color: var(--blue); margin-left: 2px; }
+  #tools .gap { flex: 1; }
+  #sort { width: auto; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(286px, 1fr)); gap: 14px; }
+  .proj { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; min-width: 0; position: relative;
+          transition: border-color .12s, transform .12s, box-shadow .12s; }
+  .proj:hover { border-color: #5a5a5a; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+  .proj .pic { aspect-ratio: 16/9; background: #0b0b0b center/cover no-repeat; position: relative; display: block; border-radius: 5px 5px 0 0; overflow: hidden; color: inherit; text-decoration: none; }
+  .proj .pic.cover { background-size: contain; background-color: #101010; }
+  .proj .pic .none { position: absolute; inset: 0; display: grid; place-items: center; color: #4a4a4a; }
+  .proj .pic .none svg.i { width: 34px; height: 34px; stroke-width: 1.2; }
+  .proj .pic .go { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(8,12,18,.55); opacity: 0; transition: opacity .12s; }
+  .proj .pic .go span { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: #fff; font-weight: 600; padding: 7px 14px; border-radius: 4px; }
+  .proj a.pic:hover .go { opacity: 1; }
+  .badge { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 8px; border-radius: 3px;
+           background: rgba(18,18,18,.86); color: #d8d8d8; border: 1px solid rgba(255,255,255,.14); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.done { color: var(--good); } .badge.cut { color: var(--warn); } .badge.ready { color: var(--blue); }
+  .badge.work { color: var(--blue); } .badge.work::before { animation: blink 1s infinite; }
+  .badge.fail { color: var(--bad); } .badge.new { color: var(--dim); }
+  @keyframes blink { 50% { opacity: .25; } }
+  .kind, .len { position: absolute; bottom: 8px; font-size: 10.5px; padding: 1px 6px; border-radius: 3px; background: rgba(0,0,0,.7); color: #e6e6e6; }
+  .kind { left: 8px; text-transform: uppercase; letter-spacing: .8px; color: #ffd6f0; }
+  .len { right: 8px; font-family: var(--mono); }
+  .proj .body { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .proj h3 { margin: 0; font-size: 14.5px; font-weight: 600; color: #f0f0f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj h3 small { color: var(--faint); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .meta { color: var(--dim); font-size: 12px; }
+  .scene { color: var(--faint); font-size: 11px; letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .warnline { color: var(--warn); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .failline { color: var(--bad); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 3px; background: #333; overflow: hidden; margin: 6px 0 2px; border-radius: 2px; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .5s ease; }
+  .acts { display: flex; gap: 6px; margin-top: auto; padding-top: 9px; align-items: center; }
+  .acts .gap { flex: 1; }
+  .more { position: relative; }
+  .more > summary { list-style: none; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 4px; color: var(--dim); }
+  .more > summary::-webkit-details-marker { display: none; }
+  .more > summary svg.i { stroke-width: 3.2; width: 16px; height: 16px; }
+  .more > summary:hover, .more[open] > summary { background: var(--panel-3); color: #fff; }
+  .more > div { position: absolute; right: 0; bottom: 32px; z-index: 10; background: #2a2a2a; border: 1px solid #555; border-radius: 4px; padding: 3px; min-width: 190px;
+                display: grid; box-shadow: 0 12px 30px rgba(0,0,0,.6); }
+  .more > div button { border: 0; background: transparent; justify-content: flex-start; height: 28px; }
+  .more > div button:hover { background: var(--accent); }
+  .more > div button.danger:hover { background: #a3303f; }
+  .empty { color: var(--dim); text-align: center; padding: 46px 20px; border: 1px dashed #3a3a3a; border-radius: 6px; }
+  .empty b { display: block; color: #e6e6e6; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+
+  /* setup, bot, poster */
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .acct, .bot { display: flex; flex-direction: column; gap: 8px; }
+  .acct h3, .bot h3, .card > .row h3 { margin: 0; font-size: 14.5px; font-weight: 600; color: #f0f0f0; display: flex; align-items: center; }
+  .acct p, .bot p { margin: 0; color: var(--dim); overflow-wrap: anywhere; }
+  .acct .row, .bot .row { justify-content: space-between; }
+  .acct .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 9px; }
+  .dot.on { background: var(--good); }
+  .pill { font-size: 11px; padding: 1px 8px; border-radius: 3px; border: 1px solid #5c2a33; background: #3a1c22; color: #ff9aa8; }
+  .pill.on { color: var(--good); border-color: #2f6b47; background: #173022; }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .checks li { display: flex; gap: 10px; align-items: baseline; }
+  .checks .st { width: 16px; flex: none; text-align: center; font-weight: 700; }
+  .checks .ok { color: var(--good); } .checks .bad { color: var(--bad); } .checks .d { color: var(--dim); }
+  .bot pre { max-height: none; flex: 1; }
+  .step { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); font-weight: 600; }
+  .design-result { display: block; width: min(100%, 420px); margin-top: 14px; border-radius: 6px; background: #000; }
+
+  /* footage finder */
+  #fnew h1 { margin: 0 0 3px; font-size: 19px; font-weight: 600; color: #f2f2f2; }
+  #fnew p { margin: 0 0 14px; color: var(--dim); }
+  .optbar select { width: auto; height: 24px; padding: 0 6px; font-size: 12px; }
+  .optbar .try { background: transparent; border: 0; color: var(--blue); padding: 0 2px; height: auto; }
+  .optbar .try:hover { background: transparent; text-decoration: underline; }
+  #fsubject { display: flex; gap: 14px; align-items: center; margin-top: 14px; padding: 12px 14px; }
+  #fsubject > img, #fsubject > .noimg { width: 50px; height: 70px; object-fit: cover; border-radius: 4px; background: var(--well); flex: none; }
+  #fsubject .who { min-width: 0; flex: 1; }
+  #fsubject .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--blue); font-weight: 600; }
+  #fsubject h3 { margin: 0; font-size: 18px; font-weight: 600; color: #f2f2f2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #falts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; color: var(--dim); font-size: 12px; }
+  #falts button { height: 26px; border-radius: 13px; padding: 0 10px 0 3px; background: transparent; border-color: #3a3a3a; color: var(--text); font-size: 12px; max-width: 260px; }
+  #falts button span { overflow: hidden; text-overflow: ellipsis; }
+  #falts button img, #falts button i { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: var(--panel-3); flex: none; }
+  #falts button em { font-style: normal; color: var(--faint); }
+  #ftools { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; flex-wrap: wrap; }
+  #ftools .gap { flex: 1; }
+  #fgrid, #fkept { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .clip { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-width: 0; position: relative; transition: border-color .12s; }
+  .clip:hover { border-color: #5a5a5a; }
+  .clip .shot { aspect-ratio: 16/9; background: #000 center/cover no-repeat; position: relative; cursor: pointer; overflow: hidden; border-radius: 5px 5px 0 0; }
+  .clip .shot .fr { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); background-repeat: no-repeat; background-color: #000; }
+  .clip .shot video, .clip .shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .clip .shot .lbl { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; font-weight: 700; color: #6f6f6f; letter-spacing: 1px; }
+  .clip .shot .go { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .12s; pointer-events: none; }
+  .clip .shot .go svg.i { width: 38px; height: 38px; color: #fff; filter: drop-shadow(0 2px 8px rgba(0,0,0,.8)); }
+  .clip .shot:hover .go { opacity: .9; }
+  .clip .q { position: absolute; left: 8px; top: 8px; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 3px; background: rgba(12,12,12,.86);
+             border: 1px solid rgba(255,255,255,.14); color: var(--dim); }
+  .clip .q.uhd { color: #ffd166; border-color: rgba(255,209,102,.45); } .clip .q.hd { color: var(--good); }
+  .clip .q.wait { animation: blink 1.2s infinite; }
+  .clip .where { position: absolute; left: 8px; bottom: 8px; font-size: 10.5px; padding: 1px 6px; border-radius: 3px; background: rgba(0,0,0,.7); color: #d0d0d0; }
+  .clip .body { padding: 9px 10px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .clip b { font-weight: 600; font-size: 12.5px; color: #ededed; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip small { color: var(--faint); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip .acts { padding-top: 7px; }
+  .clip .acts button { height: 26px; }
+  .clip .more > div a { color: var(--text); text-decoration: none; height: 28px; padding: 0 12px; display: flex; align-items: center; font-size: 12.5px; border-radius: 4px; }
+  .clip .more > div a:hover { background: var(--accent); color: #fff; }
+  button.saved { color: var(--good); border-color: #2f6b47; }
+  button.failed { color: var(--bad); border-color: #5c2a33; }
+  .clip.ghost .shot { cursor: default; background: linear-gradient(100deg, #1d1d1d 40%, #2a2a2a 50%, #1d1d1d 60%) 0 0/300% 100%; animation: sheen 1.3s linear infinite; }
+  .clip.ghost .body { height: 74px; }
+  @keyframes sheen { to { background-position: -150% 0; } }
+  #fplayer { width: min(1100px, 92vw); overflow: hidden; }
+  #fstage { background: #000; width: 100%; aspect-ratio: 16/9; max-height: 74vh; display: grid; place-items: center; color: var(--dim); }
+  #fstage iframe, #fstage video, #fstage img { width: 100%; height: 100%; border: 0; display: block; object-fit: contain; background: #000; }
+  #fplayer .bottom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #fplayer .bottom .row { flex-wrap: nowrap; flex: none; }
+
+  dialog { border: 1px solid #555; background: var(--panel); color: var(--text); border-radius: 6px; padding: 0; max-width: min(1100px, 92vw); }
+  dialog::backdrop { background: rgba(0,0,0,.8); }
   dialog video { display: block; width: 100%; max-height: 74vh; background: #000; }
-  dialog .bottom { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
-  .empty-state { color: var(--dim); }
-  @media (max-width: 640px) {
-    body { padding: 20px 16px 60px; }
+  dialog .bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; }
+  @media (max-width: 860px) {
+    #start, #resume { grid-template-columns: 1fr; }
+    #writer, #bar .ext { display: none; }
+    main { padding: 16px 14px 60px; }
     .prompt { flex-direction: column; }
-    header, nav { width: auto; }
-    nav { margin-left: 0; flex-basis: 100%; }
-    .notice { display: block; }
-    .notice a { display: inline-block; margin-top: 6px; }
-    .cols, .checks { grid-template-columns: 1fr; }
+    .find { width: 100%; }
   }
 </style>
 </head>
-<body id="top">
-<header>
-  <h1><img src="/assets/logo.svg" alt="easyedit"></h1>
-  <p>type a movie, get a captioned speech + beat-cut montage</p>
-  <nav>
-    <a href="#top">Make</a><a href="#picture-design">Design</a><a href="#edits">Edits</a><a href="#connect">Connect</a><a href="#bot">Bot</a>
-    <a href="https://github.com/blixvip/easyedit" target="_blank" rel="noopener">GitHub</a>
+<body>
+<div id="bar">
+  <a class="logo" href="#projects" title="Your projects"><img src="/assets/logo.svg" alt="easyedit"></a>
+  <nav id="tabs">
+    <a href="#projects" data-page="projects">Projects<em id="nProjects"></em></a>
+    <a href="#footage" data-page="footage" title="Find sharp footage of a film, a show, an anime or a character">Footage</a>
+    <a href="#setup" data-page="setup">Setup<i id="setupDot" hidden title="Something needs setting up"></i></a>
+    <a href="#bot" data-page="bot">Bot</a>
+    <a href="#poster" data-page="poster">Poster</a>
   </nav>
-</header>
-
-<div class="notice" id="notice" hidden></div>
-
-<div class="card">
-  <form class="prompt" id="form">
-    <input id="movie" placeholder="Movie name — e.g. Gladiator" autocomplete="off" autofocus>
-    <button id="go">Make the edit</button>
-  </form>
-  <div class="optbar"><button class="toggle" type="button" id="toggle">Options ▾</button><span class="writer" id="writer"></span></div>
-  <div class="opts" id="opts">
-    <div><label>Speech scene (file, URL or search)</label><input id="speech" placeholder="auto"></div>
-    <div><label>Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
-    <div><label>Song (file, URL or search)</label><input id="music" placeholder="auto"></div>
-    <div><label>Frame rate</label><select id="fps"><option value="">60 (default)</option><option>30</option><option>24</option></select></div>
-    <div><label>Montage seconds</label><input id="montage_length" placeholder="21" inputmode="decimal"></div>
-    <div><label>Final shot seconds</label><input id="hero_length" placeholder="3.4" inputmode="decimal"></div>
-    <div><label>Writer</label><select id="llm"><option value="">auto</option><option>claude</option><option>codex</option><option>none</option></select></div>
-    <div><label>Speed</label><select id="draft"><option value="">full quality</option><option value="1">draft (30fps, fast)</option></select></div>
-  </div>
+  <span class="gap"></span>
+  <span id="writer"></span>
+  <a class="ext" href="https://github.com/blixvip/easyedit" target="_blank" rel="noopener">GitHub</a>
 </div>
 
-<div class="card" id="picture-design" style="margin-top:14px">
-  <h2 style="margin-top:0">Design from a picture</h2>
-  <p class="section-lead">Import a PNG, JPEG, or WebP. The page designs a poster from that picture's colors and light.</p>
-  <form class="prompt" id="designForm">
-    <input id="picture" name="picture" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
-    <button type="submit" id="designGo">Design it</button>
-  </form>
-  <p class="meta" id="designStatus"></p>
-  <img id="designResult" class="design-result" alt="Designed from the imported picture" hidden>
-</div>
+<main>
+  <div class="notice" id="notice" hidden></div>
 
-<div id="runsWrap" hidden>
-  <h2>Working</h2>
-  <div class="runs" id="runs"></div>
-</div>
+  <section class="page" id="page-projects">
+    <div id="start">
+      <div class="card" id="new">
+        <h1>New project</h1>
+        <p>Type a film or an anime. easyedit finds the footage, the speech and the song, cuts it to the beat, then opens it for you to edit.</p>
+        <form class="prompt" id="form">
+          <input id="movie" aria-label="Film or anime to make a project of" placeholder="Gladiator, Jujutsu Kaisen, Blade Runner 2049…" autocomplete="off" spellcheck="false">
+          <button class="primary" id="go">Make it</button>
+        </form>
+        <div class="optbar">
+          <span>It is</span>
+          <span class="seg" id="kindSeg"><button type="button" data-kind="" class="on" title="easyedit looks the title up and decides">Auto</button><button type="button" data-kind="film">a film</button><button type="button" data-kind="anime" title="Dub speech, twixtor and scenepack footage, anime grade">an anime</button></span>
+          <button class="quiet" type="button" id="toggle">More options</button>
+        </div>
+        <div class="opts" id="opts">
+          <div><label>Speech scene (file, link or search)</label><input id="speech" placeholder="auto"></div>
+          <div><label>Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
+          <div><label>Song (file, link or search)</label><input id="music" placeholder="auto"></div>
+          <div><label>Frame rate</label><select id="fps"><option value="">60 (default)</option><option>30</option><option>24</option></select></div>
+          <div><label>Montage seconds</label><input id="montage_length" placeholder="21" inputmode="decimal"></div>
+          <div><label>Final shot seconds</label><input id="hero_length" placeholder="3.4" inputmode="decimal"></div>
+          <div><label>Writer</label><select id="llm"><option value="">auto</option><option>claude</option><option>codex</option><option>none</option></select></div>
+          <div><label>First render</label><select id="draft"><option value="">full quality</option><option value="1">draft (30 fps, fast)</option></select></div>
+        </div>
+      </div>
+      <div class="card" id="resume" hidden></div>
+    </div>
 
-<h2 id="edits">Edits</h2>
-<div class="grid" id="grid"></div>
-<p class="empty-state" id="empty" hidden>No edits yet. Type a movie name above — the first run downloads footage, so give it ~15 minutes.</p>
+    <div id="tools">
+      <h2>Your projects</h2>
+      <div class="find"><span id="findIcon"></span><input id="q" aria-label="Search projects" placeholder="Search projects" autocomplete="off" spellcheck="false"></div>
+      <div class="chips" id="filters"></div>
+      <span class="gap"></span>
+      <select id="sort" title="Order">
+        <option value="recent">Last worked on</option><option value="name">Name</option><option value="status">Status</option>
+      </select>
+    </div>
+    <div id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </section>
 
-<h2 id="connect">Connect</h2>
-<p class="section-lead">easyedit uses an AI account you already have to pick the scene, the quote and the song, so you don't need API keys. One account is enough. Without one it still makes an edit, using built-in heuristics.</p>
-<div class="cols" id="accounts"><div class="card empty-state">Checking your setup…</div></div>
-<div class="card" style="margin-top:14px">
-  <div class="row" style="justify-content:space-between;margin-bottom:12px">
-    <h3>This computer</h3>
-    <button class="ghost" id="recheck" style="padding:7px 12px;font-size:12.5px">Check again</button>
-  </div>
-  <ul class="checks" id="tools"><li class="d">Checking…</li></ul>
-</div>
+  <section class="page" id="page-footage">
+    <div class="card" id="fnew">
+      <h1>Find footage</h1>
+      <p>Type a film, a TV show, an anime or a character. You get random moments from the sharpest uploads there are. Shuffle for a new hand, save the ones you want.</p>
+      <form class="prompt" id="fform">
+        <input id="fq" placeholder="Blade Runner 2049, Breaking Bad, Jujutsu Kaisen, Gojo, Walter White…" autocomplete="off" spellcheck="false" maxlength="120">
+        <button class="primary" id="fgo">Find footage</button>
+      </form>
+      <div class="optbar">
+        <span>It is</span>
+        <span class="seg" id="fkind"><button type="button" data-kind="" title="easyedit looks the name up and decides">Auto</button><button type="button" data-kind="movie">a film</button><button type="button" data-kind="tv">a TV show</button><button type="button" data-kind="anime">an anime</button><button type="button" data-kind="character">a character</button></span>
+        <span>Sharpness</span>
+        <select id="fmin" title="Uploads YouTube really has in this size. A title can say 4K and be a blurry copy, so each one is checked."><option value="1000">1080p and up</option><option value="2000">4K only</option><option value="0">Anything</option></select>
+        <span>Each clip</span>
+        <span class="seg" id="flen"><button type="button" data-len="6">6 s</button><button type="button" data-len="12">12 s</button><button type="button" data-len="30">30 s</button></span>
+      </div>
+    </div>
 
-<h2 id="bot">Give it to your bot</h2>
-<p class="section-lead">Claude Code, Codex, or any agent that can use a terminal can make edits for you. Paste one of these into your bot. It uses the movie typed in the box at the top.</p>
-<div class="cols">
-  <div class="card bot">
-    <span class="step">New computer</span>
-    <h3>Install from GitHub</h3>
-    <p>The bot clones the repo, follows <a href="https://github.com/blixvip/easyedit/blob/main/AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a>, fixes its setup, then makes the edit.</p>
-    <pre id="promptInstall"></pre>
-    <div class="row"><span class="meta">any coding agent</span><button data-copy="promptInstall">Copy prompt</button></div>
-  </div>
-  <div class="card bot">
-    <span class="step">Already running</span>
-    <h3>Use this app</h3>
-    <p>For a bot on this computer. The edit starts here, so you can watch its progress on this page.</p>
-    <pre id="promptLocal"></pre>
-    <div class="row"><span class="meta">local API, port <span id="port"></span></span><button data-copy="promptLocal">Copy prompt</button></div>
-  </div>
-  <div class="card bot">
-    <span class="step">Claude Code</span>
-    <h3>Add it as a skill</h3>
-    <p>After this, any Claude Code session makes an edit when you type <code>/easyedit Gladiator</code>.</p>
-    <pre id="promptSkill"></pre>
-    <div class="row"><span class="meta">run in the easyedit folder</span><button data-copy="promptSkill">Copy command</button></div>
-  </div>
-</div>
+    <div class="card" id="fsubject" hidden></div>
+    <div id="falts" hidden></div>
+    <div id="ftools" hidden>
+      <div class="chips" id="fsites"></div>
+      <span class="meta" id="fcount"></span>
+      <span class="gap"></span>
+      <button class="primary" id="fshuffle" title="Deal a new random hand of clips"></button>
+    </div>
+    <div id="fgrid"></div>
+    <div class="empty" id="fempty"><b>Nothing searched yet.</b>Try <button class="try" data-try="Blade Runner 2049">Blade Runner 2049</button>, <button class="try" data-try="Breaking Bad">Breaking Bad</button>, <button class="try" data-try="Jujutsu Kaisen">Jujutsu Kaisen</button>, <button class="try" data-try="Gojo">Gojo</button> or <button class="try" data-try="Walter White">Walter White</button>.</div>
+    <div class="row" style="justify-content:center;margin-top:16px"><button id="fmore" hidden>Show more</button></div>
+
+    <div id="fkeptHead" hidden>
+      <div class="row" style="margin:30px 0 10px"><h2 style="margin:0 6px 0 0">Saved clips</h2><span class="meta" id="fkeptMeta"></span><span style="flex:1"></span><button id="ffolder">Open the folder</button></div>
+      <div id="fkept"></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-setup">
+    <h2 style="margin-top:4px">AI writer</h2>
+    <p class="lead">easyedit uses an AI account you already have to pick the scene, the quote and the song, so you need no API keys. One account is enough. Without one it still makes an edit, using built-in heuristics.</p>
+    <div class="cols" id="accounts"><div class="card" style="color:var(--dim)">Checking your setup…</div></div>
+    <h2>This computer</h2>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px"><h3>Tools easyedit needs</h3><button id="recheck">Check again</button></div>
+      <ul class="checks" id="toolList"><li class="d">Checking…</li></ul>
+    </div>
+  </section>
+
+  <section class="page" id="page-bot">
+    <h2 style="margin-top:4px">Give it to your bot</h2>
+    <p class="lead">Claude Code, Codex, or any agent that can use a terminal can make edits for you. Paste one of these into your bot. It uses the title typed in the New project box.</p>
+    <div class="cols">
+      <div class="card bot">
+        <span class="step">New computer</span>
+        <h3>Install from GitHub</h3>
+        <p>The bot clones the repo, follows <a href="https://github.com/blixvip/easyedit/blob/main/AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a>, fixes its setup, then makes the edit.</p>
+        <pre id="promptInstall"></pre>
+        <div class="row"><span class="meta">any coding agent</span><button data-copy="promptInstall">Copy prompt</button></div>
+      </div>
+      <div class="card bot">
+        <span class="step">Already running</span>
+        <h3>Use this app</h3>
+        <p>For a bot on this computer. The edit starts here, so you can watch its progress on the Projects page.</p>
+        <pre id="promptLocal"></pre>
+        <div class="row"><span class="meta">local API, port <span id="port"></span></span><button data-copy="promptLocal">Copy prompt</button></div>
+      </div>
+      <div class="card bot">
+        <span class="step">Claude Code</span>
+        <h3>Add it as a skill</h3>
+        <p>After this, any Claude Code session makes an edit when you type <code>/easyedit Gladiator</code>.</p>
+        <pre id="promptSkill"></pre>
+        <div class="row"><span class="meta">run in the easyedit folder</span><button data-copy="promptSkill">Copy command</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-poster">
+    <h2 style="margin-top:4px">Poster from a picture</h2>
+    <p class="lead">Import a PNG, JPEG or WebP. easyedit designs a poster from that picture's colours and light.</p>
+    <div class="card">
+      <form class="prompt" id="designForm">
+        <input id="picture" name="picture" type="file" aria-label="Picture to design a poster from" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style="height:38px">
+        <button type="submit" class="primary" id="designGo">Design it</button>
+      </form>
+      <p class="meta" id="designStatus" style="margin:10px 0 0"></p>
+      <img id="designResult" class="design-result" alt="Designed from the imported picture" hidden>
+    </div>
+  </section>
+</main>
 
 <dialog id="player">
   <video id="video" controls></video>
-  <div class="bottom"><strong id="playerTitle"></strong><button class="ghost" id="closePlayer">Close</button></div>
+  <div class="bottom"><strong id="playerTitle"></strong><span class="row"><a class="btn primary" id="playerEdit">Open in the editor</a><button id="closePlayer">Close</button></span></div>
+</dialog>
+
+<dialog id="fplayer">
+  <div id="fstage"></div>
+  <div class="bottom"><strong id="fnowTitle"></strong><span class="row"><span class="meta" id="fnowMeta"></span><button id="fprev" title="Previous clip (left arrow)">Previous</button><button id="fnext" title="Next clip (right arrow)">Next</button><button class="primary" id="fnowSave"></button><button id="fclose">Close</button></span></div>
 </dialog>
 
 <script>
 const $ = id => document.getElementById(id);
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const api = (url, body) => fetch(url, body ? {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 } : undefined).then(r => r.json());
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem('ee.' + k); localStorage.setItem('ee.' + k, v); } catch { /* private window */ } return null; };
 
+// One set, drawn on a 24 grid. An icon is layers with '|' between them. A layer that starts with
+// "t " is a soft tint under the lines, "f " is solid, "d " is a thin dashed guide; anything else is a line.
+const PATHS = {
+  // transport and tools: solid, with eased corners
+  play: 'f M8 5.2v13.6a1 1 0 001.52.85l11-6.8a1 1 0 000-1.7l-11-6.8A1 1 0 008 5.2z',
+  pause: 'f M7 4.5h3a1 1 0 011 1v13a1 1 0 01-1 1H7a1 1 0 01-1-1v-13a1 1 0 011-1zM14 4.5h3a1 1 0 011 1v13a1 1 0 01-1 1h-3a1 1 0 01-1-1v-13a1 1 0 011-1z',
+  first: 'f M5 5h1.4a.8.8 0 01.8.8v12.4a.8.8 0 01-.8.8H5a.8.8 0 01-.8-.8V5.8A.8.8 0 015 5zM19.8 6.1v11.8a.8.8 0 01-1.26.65l-8.3-5.9a.8.8 0 010-1.3l8.3-5.9a.8.8 0 011.26.65z',
+  last: 'f M19 5h-1.4a.8.8 0 00-.8.8v12.4a.8.8 0 00.8.8H19a.8.8 0 00.8-.8V5.8A.8.8 0 0019 5zM4.2 6.1v11.8a.8.8 0 001.26.65l8.3-5.9a.8.8 0 000-1.3l-8.3-5.9a.8.8 0 00-1.26.65z',
+  back: 'f M16.3 6.1v11.8a.8.8 0 01-1.26.65l-8.3-5.9a.8.8 0 010-1.3l8.3-5.9a.8.8 0 011.26.65zM18.4 5h.8a.8.8 0 01.8.8v12.4a.8.8 0 01-.8.8h-.8a.8.8 0 01-.8-.8V5.8a.8.8 0 01.8-.8z',
+  fwd: 'f M7.7 6.1v11.8a.8.8 0 001.26.65l8.3-5.9a.8.8 0 000-1.3l-8.3-5.9a.8.8 0 00-1.26.65zM5.6 5h-.8a.8.8 0 00-.8.8v12.4a.8.8 0 00.8.8h.8a.8.8 0 00.8-.8V5.8a.8.8 0 00-.8-.8z',
+  arrow: 'f M5.6 3.3l13 8.5a.6.6 0 01-.2 1.1l-5.2 1.2-2.6 5.3a.6.6 0 01-1.1-.2z',
+  star: 'f M12 2.8l2.75 5.75 6.3.85-4.6 4.4 1.15 6.25L12 17.05 6.4 20.05l1.15-6.25-4.6-4.4 6.3-.85z',
+  more: 'f M5 10.4a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2zM12 10.4a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2zM19 10.4a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2z',
+  hand: 't M8 12.5V6.2a1.5 1.5 0 013 0V4.7a1.5 1.5 0 013 0v1.5a1.5 1.5 0 013 0V14a7 7 0 01-7 7c-2.6 0-4.2-1.3-5.6-3.6L4.2 14.2a1.5 1.5 0 012.6-1.5L8 14.5z|M8 14.5V6.2a1.5 1.5 0 013 0V11M11 10.5V4.7a1.5 1.5 0 013 0v5.8M14 10.5V6.2a1.5 1.5 0 013 0V14a7 7 0 01-7 7c-2.6 0-4.2-1.3-5.6-3.6L4.2 14.2a1.5 1.5 0 012.6-1.5L8 14.5',
+  mag: 't M10.5 4a6.5 6.5 0 100 13 6.5 6.5 0 000-13z|M10.5 4a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM15.3 15.3l5.2 5.2|M8 10.5h5M10.5 8v5',
+  search: 't M10.5 4a6.5 6.5 0 100 13 6.5 6.5 0 000-13z|M10.5 4a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM15.3 15.3l5.2 5.2',
+  // editing
+  undo: 'M9 14L4 9l5-5|M4 9h10.5a5.5 5.5 0 010 11H11', redo: 'M15 14l5-5-5-5|M20 9H9.5a5.5 5.5 0 000 11H13',
+  plus: 'M12 5v14M5 12h14', x: 'M6.5 6.5l11 11M17.5 6.5l-11 11', check: 'M4.5 12.5l5 5 10-11',
+  trash: 't M6 7.5l.9 11.6a1 1 0 001 .9h8.2a1 1 0 001-.9L18 7.5z|M4 7.5h16M9.5 7.5V5a1 1 0 011-1h3a1 1 0 011 1v2.5M6 7.5l.9 11.6a1 1 0 001 .9h8.2a1 1 0 001-.9L18 7.5M10 11.5v5M14 11.5v5',
+  open: 'M14 4h6v6M20 4l-8.5 8.5M18 13.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5.5',
+  edit: 't M4 20l.8-4.2L14.6 6l3.4 3.4-9.8 9.8z|M4 20l.8-4.2L15.5 5.1a1.5 1.5 0 012.1 0l1.3 1.3a1.5 1.5 0 010 2.1L8.2 19.2zM13.6 7l3.4 3.4',
+  shuffle: 'M16.5 4H20v3.5M4 19L20 4M20 16.5V20h-3.5M14.5 14.5L20 20M4 5l5 5',
+  down: 'M12 3.5v11M7.5 10.5l4.5 4.5 4.5-4.5M4.5 17v2A1.5 1.5 0 006 20.5h12a1.5 1.5 0 001.5-1.5v-2',
+  grid: 't M4 5a1 1 0 011-1h5v6H4zM14 14h6v5a1 1 0 01-1 1h-5z|M5 4h4.5a.5.5 0 01.5.5v5a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5V5a1 1 0 011-1zM14.5 4H19a1 1 0 011 1v4.500a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5v-5a.5.5 0 01.5-.5zM4.5 14h5a.5.5 0 01.5.5v5a.5.5 0 01-.5.5H5a1 1 0 01-1-1v-4.500a.5.5 0 01.5-.5zM14.5 14h5a.5.5 0 01.5.5V19a1 1 0 01-1 1h-4.500a.5.5 0 01-.5-.5v-5a.5.5 0 01.5-.5z',
+  list: 'M9 6h11M9 12h11M9 18h11|f M4.6 4.8a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4zM4.6 10.8a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4zM4.6 16.8a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4z',
+  stair: 't M3 4.500h9v3H3zM7.500 10.500h9v3h-9zM12 16.500h9v3h-9z|M3.500 4.500h8a.5.5 0 01.5.5v2a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5V5a.5.5 0 01.5-.5zM8 10.500h8a.5.5 0 01.5.5v2a.5.5 0 01-.5.5H8a.5.5 0 01-.5-.5v-2a.5.5 0 01.5-.5zM12.500 16.500h8a.5.5 0 01.5.5v2a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-2a.5.5 0 01.5-.5z',
+  // viewer
+  eye: 't M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.500 6.500-9.500 6.500S2.500 12 2.500 12z|M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.500 6.500-9.500 6.500S2.500 12 2.500 12z|f M12 9.200a2.800 2.800 0 100 5.600 2.800 2.800 0 000-5.600z',
+  safe: 'M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z|d M7 8.500h10v7H7z',
+  thirds: 'M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z|d M9 5v14M15 5v14M3 9.700h18M3 14.300h18',
+  vol: 't M4 9.500h3.500L12 6v12l-4.500-3.500H4z|M4 9.500h3.500L12 6v12l-4.500-3.500H4zM15.500 9a4.200 4.200 0 010 6M18 6.500a7.800 7.800 0 010 11',
+  mute: 't M4 9.500h3.500L12 6v12l-4.500-3.500H4z|M4 9.500h3.500L12 6v12l-4.500-3.500H4zM15.500 9.500l5 5M20.500 9.500l-5 5',
+  // layers and panels
+  video: 't M5 5h9a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z|M5 5h9a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zM16 10.500l4.200-2.600a.5.5 0 01.8.400v7.400a.5.5 0 01-.8.400L16 13.500',
+  film: 't M8 4h8v16H8z|M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1zM8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4',
+  sound: 'M3.500 11v2M7 8v8M10.500 4.500v15M14 7.500v9M17.500 10v4M21 11.200v1.600',
+  text: 'M5 7.500V5h14v2.500M12 5v14M9 19h6',
+  captions: 't M5 4.500h14a2 2 0 012 2v11a2 2 0 01-2 2H5a2 2 0 01-2-2v-11a2 2 0 012-2z|M5 4.500h14a2 2 0 012 2v11a2 2 0 01-2 2H5a2 2 0 01-2-2v-11a2 2 0 012-2zM7 14.500h4M14 14.500h3M7 10.500h2M12 10.500h5',
+  speech: 't M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z|M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3zM5.500 11a6.500 6.500 0 0013 0M12 17.500V21M9 21h6',
+  tools: 't M14.700 6.300a4 4 0 00-5.200 5.200L3.500 17.500a2.100 2.100 0 003 3l6-6a4 4 0 005.200-5.200l-2.900 2.900-2.300-.6-.6-2.300z|M14.700 6.300a4 4 0 00-5.200 5.200L3.500 17.500a2.100 2.100 0 003 3l6-6a4 4 0 005.200-5.200l-2.900 2.900-2.300-.6-.6-2.300z',
+  look: 't M12 3a9 9 0 100 18c1.400 0 2.200-.9 2.200-2 0-1-.7-1.600-.7-2.600 0-1.100.9-1.900 2-1.900h1.800A3.700 3.700 0 0021 10.800C21 6.500 17 3 12 3z|M12 3a9 9 0 100 18c1.400 0 2.200-.9 2.200-2 0-1-.7-1.600-.7-2.600 0-1.100.9-1.900 2-1.900h1.800A3.700 3.700 0 0021 10.800C21 6.500 17 3 12 3z|f M7.600 10.400a1.200 1.200 0 100 2.400 1.200 1.200 0 000-2.400zM10.200 6.600a1.200 1.200 0 100 2.400 1.200 1.200 0 000-2.400zM15 6.800a1.200 1.200 0 100 2.400 1.200 1.200 0 000-2.400z',
+  ai: 't M11 4l1.900 5.100L18 11l-5.100 1.900L11 18l-1.900-5.100L4 11l5.100-1.900z|M11 4l1.900 5.100L18 11l-5.100 1.900L11 18l-1.900-5.100L4 11l5.100-1.900zM18.500 3.500v3M17 5h3M18.500 16.500v4M16.500 18.500h4',
+  auto: 't M11 4l1.900 5.100L18 11l-5.100 1.900L11 18l-1.900-5.100L4 11l5.100-1.900z|M11 4l1.900 5.100L18 11l-5.100 1.900L11 18l-1.900-5.100L4 11l5.100-1.900zM18.500 3.500v3M17 5h3M18.500 16.500v4M16.500 18.500h4',
+  adj: 'M12 3a9 9 0 100 18 9 9 0 000-18z|f M12 3a9 9 0 000 18z',
+  mono: 'M12 3a9 9 0 100 18 9 9 0 000-18z|f M12 3a9 9 0 000 18z',
+  invert: 'M12 3a9 9 0 100 18 9 9 0 000-18z|f M12 3a9 9 0 010 18zM9.300 10.300a1.700 1.700 0 100 3.400 1.700 1.700 0 000-3.400z',
+  face: 't M12 3a9 9 0 100 18 9 9 0 000-18z|M12 3a9 9 0 100 18 9 9 0 000-18zM8.500 14.500a5 5 0 007 0|f M9 9a1.200 1.200 0 100 2.400A1.200 1.200 0 009 9zM15 9a1.200 1.200 0 100 2.400A1.200 1.200 0 0015 9z',
+  // camera moves
+  punch: 't M9.500 9.500h5v5h-5z|M4 8.500V5a1 1 0 011-1h3.500M20 8.500V5a1 1 0 00-1-1h-3.500M4 15.500V19a1 1 0 001 1h3.500M20 15.500V19a1 1 0 01-1 1h-3.500M9.500 9.500h5v5h-5z',
+  whip: 'M12 19.500v-15M6.500 10L12 4.500 17.500 10|d M7 15.500v4M17 15.500v4', 'whip-down': 'M12 4.500v15M6.500 14l5.500 5.500 5.500-5.500|d M7 4.500v4M17 4.500v4',
+  slide: 'M4.500 12h15M14 6.500l5.500 5.500-5.500 5.500|d M4.500 7h4M4.500 17h4',
+  cut: 'M12 3v18|t M3.500 6h5.500v12H3.500z|M3.500 6h5.500v12H3.500zM15 6h5.500v12H15z',
+  spin: 'M20 12a8 8 0 11-2.600-5.900M20.500 3.500v5h-5|f M12 10.600a1.400 1.400 0 100 2.800 1.400 1.400 0 000-2.800z',
+  'zoom-out': 'M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z|t M9 9h6v6H9z|M9 9h6v6H9z|d M4.500 4.500L9 9M19.500 4.500L15 9M4.500 19.500L9 15M19.500 19.500L15 15',
+  bounce: 'M3 6c2.500 0 3.500 13 5.500 13S11 10 13 10s2.300 9 4 9 2-4.500 4-4.500',
+  push: 'M9 3.500H4.500a1 1 0 00-1 1V9M15 3.500h4.500a1 1 0 011 1V9M9 20.500H4.500a1 1 0 01-1-1V15M15 20.500h4.500a1 1 0 001-1V15M9.500 9.500l5 5M14.500 9.500l-5 5',
+  pull: 'M3.500 9H8a1 1 0 001-1V3.500M20.500 9H16a1 1 0 01-1-1V3.500M3.500 15H8a1 1 0 011 1v4.500M20.500 15H16a1 1 0 00-1 1v4.500',
+  // effects
+  shake: 'M2.500 12h2l2.500-6 4 12 4-12 2.500 6h4', twitch: 'M2.500 12h3l2-6 3 12 3-9 2 5h6',
+  breathe: 'M3 12c3-8 6-8 9 0s6 8 9 0', strobe: 't M13.200 2.500L5 13.500h5.600l-1 8L18 10.500h-5.600z|M13.200 2.500L5 13.500h5.600l-1 8L18 10.500h-5.600z',
+  rgb: 't M12 4a4.700 4.700 0 100 9.400A4.700 4.700 0 0012 4z|M12 4a4.700 4.700 0 100 9.400A4.700 4.700 0 0012 4zM8 10.600A4.700 4.700 0 108 20a4.700 4.700 0 000-9.400zM16 10.600a4.700 4.700 0 100 9.400 4.700 4.700 0 000-9.400z',
+  glow: 't M12 8a4 4 0 100 8 4 4 0 000-8z|M12 8a4 4 0 100 8 4 4 0 000-8zM12 2.500V5M12 19v2.500M2.500 12H5M19 12h2.500M5.300 5.300L7 7M17 17l1.700 1.700M18.700 5.300L17 7M7 17l-1.700 1.700',
+  lens: 'M12 3a9 9 0 100 18 9 9 0 000-18z|t M12 7.500a4.500 4.500 0 100 9 4.500 4.500 0 000-9z|M12 7.500a4.500 4.500 0 100 9 4.500 4.500 0 000-9zM13.500 10a2 2 0 011 1.200',
+  glitch: 'M3 6h9M14.500 6H21M6 10h12M3 14h6M11.500 14H21M5 18h11',
+  vhs: 't M4.500 5h15A1.500 1.500 0 0121 6.500v11a1.500 1.500 0 01-1.500 1.500h-15A1.500 1.500 0 013 17.500v-11A1.500 1.500 0 014.500 5z|M4.500 5h15A1.500 1.500 0 0121 6.500v11a1.500 1.500 0 01-1.500 1.500h-15A1.500 1.500 0 013 17.500v-11A1.500 1.500 0 014.500 5zM8.500 10a2 2 0 100 4 2 2 0 000-4zM15.500 10a2 2 0 100 4 2 2 0 000-4zM8.500 14h7',
+  leak: 'M3 21L21 3|d M3 13.500L13.500 3M10.500 21L21 10.500',
+  edge: 'M5 19V8a3 3 0 013-3h11|M9.500 19v-6.500a3 3 0 013-3H19|d M14 19v-2.500a2.500 2.500 0 012.500-2.500H19',
+  mirror: 'd M12 3v18|t M8.500 7L4 12l4.500 5z|M8.500 7L4 12l4.500 5zM15.500 7l4.500 5-4.500 5z',
+  poster: 'M3.500 19.500h4.200v-4.200h4.200v-4.200h4.200V6.900h4.400',
+  pixel: 't M4 4h6.500v6.500H4zM13.500 13.500H20V20h-6.500z|M4 4h6.500v6.500H4zM13.500 4H20v6.500h-6.500zM4 13.500h6.500V20H4zM13.500 13.500H20V20h-6.500z',
+  impact: 't M12 2.500l2.400 6.600h7.100l-5.700 4.300 2.200 7.100-6-4.300-6 4.300 2.200-7.100L2.500 9.100h7.100z|M12 2.500l2.400 6.600h7.100l-5.700 4.300 2.200 7.100-6-4.300-6 4.300 2.200-7.100L2.500 9.100h7.100z',
+  // subject effects
+  outline: 'M12 4a4 4 0 100 8 4 4 0 000-8zM4.500 20.500c0-4 3.300-6.500 7.500-6.500s7.500 2.500 7.500 6.500',
+  aura: 't M12 7a3 3 0 100 6 3 3 0 000-6zM6 21c0-3 2.500-5 6-5s6 2 6 5z|M12 7a3 3 0 100 6 3 3 0 000-6zM6 21c0-3 2.500-5 6-5s6 2 6 5|d M12 2v2.500M4.500 5.500l1.800 1.800M19.500 5.500l-1.800 1.800',
+  echo: 't M9 8a3 3 0 100 6 3 3 0 000-6zM3 20c0-3 2.500-5 6-5s6 2 6 5z|M9 8a3 3 0 100 6 3 3 0 000-6zM3 20c0-3 2.500-5 6-5s6 2 6 5M16 6.500a4 4 0 010 7.500M19 3.500a8 8 0 010 13.500',
+  isolate: 'd M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z|t M12 8.500a2.200 2.200 0 100 4.400 2.200 2.200 0 000-4.400zM8 19c0-2 1.800-3.500 4-3.500s4 1.500 4 3.500z|M12 8.500a2.200 2.200 0 100 4.400 2.200 2.200 0 000-4.400zM8 19c0-2 1.800-3.500 4-3.500s4 1.500 4 3.500',
+};
+const ic = name => `<svg class="i" viewBox="0 0 24 24">${String(PATHS[name] || '').split('|').map(l => {
+  const kind = /^[tfd] /.test(l) ? l[0] : '';
+  return `<path${kind ? ` class="${kind}"` : ''} d="${kind ? l.slice(2) : l}"/>`;
+}).join('')}</svg>`;
 const fmt = s => s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const ago = t => {
   const m = (Date.now() / 1000 - t) / 60;
   if (m < 1) return 'just now';
-  if (m < 60) return `${Math.round(m)}m ago`;
-  if (m < 1440) return `${Math.round(m / 60)}h ago`;
-  return `${Math.round(m / 1440)}d ago`;
+  if (m < 60) return `${Math.round(m)} min ago`;
+  if (m < 1440) return `${Math.round(m / 60)} h ago`;
+  if (m < 2880) return 'yesterday';
+  return `${Math.round(m / 1440)} days ago`;
 };
 
-$('toggle').onclick = () => {
-  const open = $('opts').classList.toggle('open');
-  $('toggle').textContent = open ? 'Options ▴' : 'Options ▾';
+// ---------- pages ----------
+const PAGES = ['projects', 'footage', 'setup', 'bot', 'poster'];
+function showPage() {
+  const asked = location.hash.slice(1), page = PAGES.includes(asked) ? asked : asked === 'connect' ? 'setup' : 'projects';
+  for (const p of PAGES) $(`page-${p}`).classList.toggle('on', p === page);
+  for (const a of $('tabs').children) a.classList.toggle('on', a.dataset.page === page);
+  document.title = `easyedit · ${page[0].toUpperCase()}${page.slice(1)}`;
+}
+addEventListener('hashchange', showPage);
+
+// ---------- a new project ----------
+let kind = '';
+$('kindSeg').onclick = e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  kind = b.dataset.kind;
+  for (const x of $('kindSeg').children) x.classList.toggle('on', x === b);
 };
+$('toggle').onclick = () => { $('toggle').textContent = $('opts').classList.toggle('open') ? 'Fewer options' : 'More options'; };
 
 function editBody(movie) {
   return {
@@ -238,90 +528,129 @@ function editBody(movie) {
     hero_length: $('hero_length').value || null,
     llm: $('llm').value || null,
     draft: !!$('draft').value,
+    ...(kind ? { anime: kind === 'anime' } : {}),
   };
 }
 
-$('form').onsubmit = async e => {
-  e.preventDefault();
-  const movie = $('movie').value.trim();
-  if (!movie) return;
-  $('go').disabled = true;
+async function start(body) {
   try {
-    const res = await api('/api/new', editBody(movie));
+    const res = await api('/api/new', body);
     if (res.error) return alert(res.error);
-    if (res.already) return alert('That edit is already running.');
+    if (res.already) return alert('That project is already being worked on.');
     openLogs.add(res.slug);
     refresh();
   } catch {
     alert('The easyedit app did not answer. Leave this page open and try again.');
-  } finally {
-    $('go').disabled = false;
   }
+}
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  const movie = $('movie').value.trim();
+  if (!movie) return $('movie').focus();
+  $('go').disabled = true;
+  await start(editBody(movie));
+  $('go').disabled = false;
+  $('movie').value = '';
+  renderPrompts();
 };
 
+// ---------- the projects ----------
+let jobs = [], filter = ls('filter') || 'all', drawn = '';
 const openLogs = new Set();
+$('sort').value = ls('sort') || 'recent';
 
-function runCard(job) {
-  const pct = Math.round((job.progress || 0) * 100);
-  const status = job.error ? 'error' : (job.stage || 'working');
-  return `<div class="card">
-    <div class="row" style="justify-content:space-between">
-      <strong>${esc(job.title)}</strong>
-      <span class="pill ${job.error ? 'err' : ''}">${esc(status)}</span>
-    </div>
-    <div class="bar"><i style="width:${pct}%"></i></div>
-    <div class="row" style="justify-content:space-between">
-      <span class="meta">${pct}%</span>
-      <span class="row">
-        <button class="ghost" data-log="${job.slug}">${openLogs.has(job.slug) ? 'Hide log' : 'Show log'}</button>
-        <button class="ghost" data-stop="${job.slug}">Stop</button>
-      </span>
-    </div>
-    ${openLogs.has(job.slug) ? `<pre id="log-${job.slug}">loading…</pre>` : ''}
-  </div>`;
+function stateOf(j) {   // one word for where a project stands, and what to do with it next
+  if (j.running) return { id: 'work', label: j.stage ? j.stage[0].toUpperCase() + j.stage.slice(1) : 'Working', rank: 0 };
+  if (j.failed) return { id: 'fail', label: 'Stopped early', rank: 1 };
+  if (j.video) return { id: 'done', label: 'Exported', rank: 4 };
+  if (j.cut) return { id: 'cut', label: 'Cut, not exported', rank: 3 };
+  if (j.ready) return { id: 'ready', label: 'Ready to edit', rank: 2 };
+  return { id: 'new', label: 'Not made yet', rank: 1 };
+}
+const FILTERS = [['all', 'All', () => true], ['open', 'In progress', j => !j.video], ['done', 'Exported', j => !!j.video],
+                 ['anime', 'Anime', j => j.kind === 'anime'], ['film', 'Films', j => j.kind !== 'anime']];
+
+function picture(j) {
+  const stamp = Math.round(j.updated);
+  if (j.thumb) return { style: `background-image:url('${esc(j.thumb)}?t=${stamp}')`, cls: '' };
+  if (j.cover) return { style: `background-image:url('${esc(j.cover)}')`, cls: 'cover' };
+  return { style: '', cls: '', none: `<span class="none">${ic('film')}</span>` };
 }
 
-function tile(job) {
-  const thumb = job.thumb ? `background-image:url('${esc(job.thumb)}?t=${Math.round(job.updated)}')` : '';
-  const state = job.running ? (job.stage || 'working') : 'not rendered';
-  return `<div class="tile">
-    <div class="thumb ${job.video ? '' : 'empty'}" style="${thumb}" ${job.video ? `data-play="${esc(job.slug)}"` : ''}></div>
+function card(j) {
+  const st = stateOf(j), pic = picture(j), pct = Math.round((j.progress || 0) * 100), slug = esc(j.slug);
+  const facts = [j.duration ? fmt(j.duration) : '', j.size ? `${j.size} MB` : '', `${ago(j.updated)}`].filter(Boolean).join(' · ');
+  const main = j.running ? `<button data-stop="${slug}">Stop</button><button class="quiet" data-log="${slug}">${openLogs.has(j.slug) ? 'Hide log' : 'Show log'}</button>`
+    : j.ready ? `<a class="btn primary" href="/editor/${slug}">${ic('edit')}Open editor</a>${j.video ? `<button data-play="${slug}">${ic('play')}Play</button>` : ''}`
+    : `<button class="primary" data-again="${slug}">${j.failed ? 'Try again' : 'Make it'}</button>`;
+  const inner = `${pic.none || ''}<span class="badge ${st.id}">${esc(st.label)}${j.running ? ` ${pct}%` : ''}</span>
+      ${j.kind === 'anime' ? '<span class="kind">Anime</span>' : ''}${j.duration ? `<span class="len">${fmt(j.duration)}</span>` : ''}`;
+  return `<article class="proj" data-slug="${slug}">
+    ${j.ready && !j.running ? `<a class="pic ${pic.cls}" href="/editor/${slug}" style="${pic.style}" title="Open ${esc(j.title)} in the editor">${inner}<span class="go"><span>${ic('edit')}Open editor</span></span></a>`
+      : `<div class="pic ${pic.cls}" style="${pic.style}">${inner}</div>`}
     <div class="body">
-      <h3>${esc(job.title)}</h3>
-      <div class="meta">${job.video ? `${fmt(job.duration)} · ${job.size} MB · ${ago(job.updated)}`
-                                    : `${esc(state)} · ${ago(job.updated)}`}</div>
-      ${job.scene ? `<div class="scene">${esc(job.scene)}</div>` : ''}
-      <div class="actions">
-        ${job.video ? `<button data-play="${esc(job.slug)}">Play</button>` : ''}
-        <button class="ghost" data-again="${esc(job.slug)}">Re-run</button>
-        <button class="ghost" data-folder="${job.slug}">Folder</button>
-        <button class="ghost" data-delete="${job.slug}">Delete</button>
+      <h3 title="${esc(j.title)}">${esc(j.title)}${j.year ? `<small>${esc(j.year)}</small>` : ''}</h3>
+      <div class="meta">${facts}</div>
+      ${j.running ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}
+      ${j.failed ? `<div class="failline" title="${esc(j.failed)}">${esc(j.failed)}</div>`
+        : j.missing && j.ready ? '<div class="warnline" title="The downloaded footage is no longer on this computer. Apply changes in the editor downloads it again.">Footage is not on this computer</div>'
+        : j.scene ? `<div class="scene" title="${esc(j.scene)}">${esc(j.scene)}</div>` : ''}
+      ${openLogs.has(j.slug) && j.running ? `<pre id="log-${slug}">loading…</pre>` : ''}
+      <div class="acts">${main}<span class="gap"></span>
+        <details class="more"><summary title="More">${ic('more')}</summary><div>
+          ${j.ready && !j.running ? `<button data-again="${slug}">Make it again from scratch</button>` : ''}
+          ${j.missing && !j.running ? `<button data-restore="${slug}" title="Downloads the same files again, so the project can be edited and exported">Download its footage again</button>` : ''}
+          <button data-folder="${slug}">Show its folder</button>
+          <button class="danger" data-delete="${slug}">Delete project</button>
+        </div></details>
       </div>
     </div>
-  </div>`;
+  </article>`;
 }
 
-let jobs = [];
+function draw() {
+  const q = $('q').value.trim().toLowerCase(), by = $('sort').value;
+  $('filters').innerHTML = FILTERS.map(([id, name, test]) => {
+    const n = jobs.filter(test).length;
+    return id === 'all' || n ? `<button data-f="${id}" class="${filter === id ? 'on' : ''}">${name}<em>${n}</em></button>` : '';
+  }).join('');
+  const test = (FILTERS.find(f => f[0] === filter) || FILTERS[0])[2];
+  const list = jobs.filter(j => test(j) && (!q || `${j.title} ${j.slug} ${j.scene || ''} ${j.year || ''}`.toLowerCase().includes(q)));
+  list.sort((a, b) => (b.running - a.running) || (by === 'name' ? a.title.localeCompare(b.title)
+    : by === 'status' ? stateOf(a).rank - stateOf(b).rank || b.updated - a.updated : b.updated - a.updated));
+  $('nProjects').textContent = jobs.length ? ` ${jobs.length}` : '';
+  $('grid').innerHTML = list.map(card).join('');
+  $('empty').hidden = list.length > 0;
+  $('empty').innerHTML = jobs.length ? '<b>Nothing matches.</b>Try another search, or pick All.'
+    : '<b>No projects yet.</b>Type a film or an anime above. The first one downloads footage, so give it about 15 minutes.';
+  // the project to carry on with: the one worked on last that the editor can open
+  const last = jobs.filter(j => j.ready && !j.running).sort((a, b) => b.updated - a.updated)[0];
+  $('resume').hidden = !last;
+  $('start').classList.toggle('solo', !last);
+  if (last) {
+    const pic = picture(last), st = stateOf(last);
+    $('resume').innerHTML = `<a class="pic" href="/editor/${esc(last.slug)}" style="${pic.style}"><span class="badge ${st.id}">${esc(st.label)}</span></a>
+      <div class="info"><span class="eyebrow">Carry on</span><h3 title="${esc(last.title)}">${esc(last.title)}</h3>
+        <div class="meta">${[last.kind === 'anime' ? 'Anime' : 'Film', last.year, last.duration ? fmt(last.duration) : '', `worked on ${ago(last.updated)}`].filter(Boolean).join(' · ')}</div>
+        ${last.scene ? `<div class="scene">${esc(last.scene)}</div>` : ''}
+        <div class="acts"><a class="btn primary" href="/editor/${esc(last.slug)}">${ic('edit')}Open editor</a>${last.video ? `<button data-play="${esc(last.slug)}">${ic('play')}Play</button>` : ''}</div></div>`;
+  }
+}
+
 async function refresh() {
   let data;
   try { data = await api('/api/jobs'); } catch { return; }
   jobs = data.jobs || [];
-  const running = jobs.filter(j => j.running);
-  const kept = {};
-  document.querySelectorAll('pre[id^="log-"]').forEach(el => {
-    if (el.textContent && el.textContent !== 'loading…') kept[el.id] = { text: el.textContent, scroll: el.scrollTop };
-  });
-  $('runsWrap').hidden = !running.length;
-  $('runs').innerHTML = running.map(runCard).join('');
-  $('grid').innerHTML = jobs.map(tile).join('');
-  $('empty').hidden = jobs.length > 0;
-  for (const [id, saved] of Object.entries(kept)) {
-    const el = $(id);
-    if (!el) continue;
-    el.textContent = saved.text;
-    el.scrollTop = saved.scroll;
+  // nothing changed: leave the page alone, so an open menu or a hover is not torn down every few seconds
+  const now = JSON.stringify([jobs.map(j => [j.slug, j.running, j.stage, j.progress, j.video, j.ready, j.cut, j.failed, Math.round(j.updated / 60), j.kind]), [...openLogs]]);
+  if (now !== drawn && !document.querySelector('.more[open]')) {
+    const kept = {};
+    document.querySelectorAll('pre[id^="log-"]').forEach(el => { kept[el.id] = { text: el.textContent, scroll: el.scrollTop }; });
+    drawn = now;
+    draw();
+    for (const [id, saved] of Object.entries(kept)) { const el = $(id); if (el) { el.textContent = saved.text; el.scrollTop = saved.scroll; } }
   }
-  running.forEach(j => openLogs.has(j.slug) && pullLog(j.slug));
+  jobs.filter(j => j.running && openLogs.has(j.slug)).forEach(j => pullLog(j.slug));
 }
 
 async function pullLog(slug) {
@@ -333,14 +662,27 @@ async function pullLog(slug) {
   if (atBottom) el.scrollTop = el.scrollHeight;
 }
 
+$('q').oninput = draw;
+$('sort').onchange = () => { ls('sort', $('sort').value); draw(); };
+$('filters').onclick = e => { const b = e.target.closest('button'); if (b) { filter = b.dataset.f; ls('filter', filter); draw(); } };
+addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); $('q').focus(); }
+  if (e.key === 'Escape' && document.activeElement === $('q')) { $('q').value = ''; draw(); }
+});
+document.addEventListener('click', e => {   // a click anywhere else closes an open menu
+  for (const m of document.querySelectorAll('.more[open]')) if (!m.contains(e.target)) m.open = false;
+});
+
 document.addEventListener('click', async e => {
-  const b = e.target.closest('button, [data-play]');
+  const b = e.target.closest('button');
   if (!b) return;
-  const d = b.dataset;
+  const d = b.dataset, job = jobs.find(j => j.slug === (d.play || d.again || d.delete || d.stop || d.log || d.folder || d.restore));
+  if (b.closest('.more')) b.closest('.more').open = false;
   if (d.play) {
-    const job = jobs.find(j => j.slug === d.play);
     $('video').src = job.video;
     $('playerTitle').textContent = job.title;
+    $('playerEdit').href = `/editor/${job.slug}`;
+    $('playerEdit').hidden = !job.ready;
     $('player').showModal();
     $('video').play();
   } else if (d.log) {
@@ -349,46 +691,44 @@ document.addEventListener('click', async e => {
   } else if (d.stop) {
     await api('/api/stop', { slug: d.stop });
     refresh();
+  } else if (d.restore) {
+    const res = await api(`/api/edit/${d.restore}/clips/restore`, {}).catch(() => ({ error: 'The easyedit app did not answer.' }));
+    if (res.error) return alert(res.error);
+    openLogs.add(d.restore);
+    refresh();
   } else if (d.folder) {
     api('/api/reveal', { slug: d.folder });
   } else if (d.again) {
-    const job = jobs.find(j => j.slug === d.again);
-    if (!job) return;
-    if (!confirm(`Start another edit of "${job.title}"?`)) return;
-    const res = await api('/api/new', { ...editBody(job.title), movie: job.title });
-    if (res.error) return alert(res.error);
-    if (res.already) return alert('That edit is already running.');
-    openLogs.add(res.slug);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    refresh();
+    if (job.ready && !confirm(`Make "${job.title}" again? It is cut and rendered from the start; your choices in the editor are kept.`)) return;
+    // the folder's own name is sent, so the run lands in this project whatever its title has become
+    await start({ movie: job.slug.replace(/-/g, ' ') });
   } else if (d.delete) {
-    const job = jobs.find(j => j.slug === d.delete);
-    if (confirm(`Delete "${job.title}" and everything downloaded for it?`)) {
+    if (confirm(`Delete "${job.title}" and everything downloaded for it? This cannot be undone.`)) {
       await api('/api/delete', { slug: d.delete });
+      drawn = '';
       refresh();
     }
   }
 });
 
-$('closePlayer').onclick = () => { $('video').pause(); $('player').close(); };
+$('closePlayer').onclick = () => $('player').close();
 $('player').addEventListener('close', () => { $('video').pause(); $('video').removeAttribute('src'); });
 
-// ---- connect + bot
+// ---------- setup + bot ----------
 const REPO = 'https://github.com/blixvip/easyedit';
 let setup = null;
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function accountCard(a) {
   const short = a.name.split(' ')[0];
   const action = a.connected
-    ? `<button class="ghost" data-connect="${a.id}">Switch account</button>`
-    : a.cli ? `<button data-connect="${a.id}">Connect ${esc(short)}</button>`
-            : `<button class="ghost" data-copytext="${esc(a.install)}">Copy install command</button>`;
+    ? `<button data-connect="${a.id}">Switch account</button>`
+    : a.cli ? `<button class="primary" data-connect="${a.id}">Connect ${esc(short)}</button>`
+            : `<button data-copytext="${esc(a.install)}">Copy install command</button>`;
   const how = a.cli ? `Signs in with <code>${esc(a.login)}</code> in a new terminal window.`
                     : `Install it with <code>${esc(a.install)}</code>, then connect.`;
   return `<div class="card acct">
     <div class="row"><h3><span class="dot ${a.connected ? 'on' : ''}"></span>${esc(a.name)}</h3>
-      <span class="pill ${a.connected ? 'on' : 'err'}">${a.connected ? 'connected' : 'not connected'}</span></div>
+      <span class="pill ${a.connected ? 'on' : ''}">${a.connected ? 'connected' : 'not connected'}</span></div>
     <p>${esc(a.detail)}</p>
     <p>${how}</p>
     <div class="actions">${action}</div>
@@ -399,16 +739,17 @@ function renderSetup() {
   const r = setup && setup.report;
   if (!r) return;
   $('accounts').innerHTML = r.accounts.map(accountCard).join('');
-  $('tools').innerHTML = r.tools.map(t => `<li>
+  $('toolList').innerHTML = r.tools.map(t => `<li>
     <span class="st ${t.ok ? 'ok' : 'bad'}">${t.ok ? '✓' : '✕'}</span>
     <span><strong>${esc(t.name)}</strong> <span class="d">${esc(t.detail)}</span>
     ${t.fix ? `<br><span class="d">Fix: <code>${esc(t.fix)}</code></span>` : ''}</span></li>`).join('');
-  $('writer').innerHTML = r.writer ? `writer: <b>${esc(r.writer)}</b>` : 'writer: heuristics';
+  $('writer').innerHTML = r.writer ? `AI writer: <b>${esc(r.writer)}</b>` : 'AI writer: built-in heuristics';
   const missing = r.tools.filter(t => !t.ok).map(t => t.name);
   const msg = missing.length ? `Missing before you can render: ${missing.join(', ')}.`
     : !r.writer ? 'Connect Claude or Codex so the AI picks the best scene, quote and song.' : '';
+  $('setupDot').hidden = !msg;
   $('notice').hidden = !msg;
-  $('notice').innerHTML = msg ? `<span>${esc(msg)}</span><a href="#connect">Set up</a>` : '';
+  $('notice').innerHTML = msg ? `<span>${esc(msg)}</span><a href="#setup">Set up</a>` : '';
 }
 
 async function loadSetup(force) {
@@ -480,12 +821,323 @@ document.addEventListener('click', async e => {
     b.textContent = 'Finish in the terminal window';
   }
 });
-$('recheck').onclick = () => { $('tools').innerHTML = '<li class="d">Checking…</li>'; loadSetup(true); };
+$('recheck').onclick = () => { $('toolList').innerHTML = '<li class="d">Checking…</li>'; loadSetup(true); };
 let lastFocusCheck = 0;
 window.addEventListener('focus', () => {  // back from a sign-in window
   if (Date.now() - lastFocusCheck > 15000) { lastFocusCheck = Date.now(); loadSetup(true); }
 });
 
+// ---------- footage ----------
+const F = { kind: ls('fkind') || '', len: +ls('flen') || 12, min: ls('fmin') == null ? 1000 : +ls('fmin'), q: '', subject: null, subjects: [],
+            pool: [], uploads: 0, failed: [], shown: 24, site: 'all', probes: {}, asking: new Set(), saves: {}, cards: new Map(), run: 0,
+            busy: false, now: null, sheets: {}, poll: 0 };
+const SITE_NAMES = { youtube: 'Clips', sakuga: 'Animation cuts', themes: 'Openings', filmgrab: 'Stills' };
+const KIND_NAMES = { movie: 'Film', tv: 'TV show', anime: 'Anime', character: 'Character', text: 'Search' };
+const tierName = t => t >= 2000 ? '4K' : t >= 1400 ? '1440p' : t >= 1000 ? '1080p' : t >= 700 ? '720p' : t ? `${t}p` : '';
+const clock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const sameSubject = (a, b) => a && b && a.kind === b.kind && a.title === b.title && a.of === b.of && a.year === b.year;
+
+function fPasses(c) {   // sharp enough to show? An upload YouTube has not been asked about yet stays until it is.
+  if (c.site !== 'youtube') return F.min < 2000 || c.height >= 2000;   // drawn cuts and stills are sharp at their own size
+  const p = F.probes[c.id];
+  return !p || (!p.error && p.tier >= F.min);
+}
+const fVisible = () => F.pool.filter(c => (F.site === 'all' || c.site === F.site) && fPasses(c)).slice(0, F.shown);
+
+function fSheet(el, b, t) {   // show the frame at `t` from YouTube's storyboard: sheets of small frames, in rows
+  const per = b.cols * b.rows, i = Math.max(0, Math.floor(t * b.fps));
+  const url = b.sheets[Math.min(b.sheets.length - 1, Math.floor(i / per))], cell = i % per;
+  const put = rows => {
+    const col = cell % b.cols, row = Math.min(rows - 1, Math.floor(cell / b.cols));
+    el.style.aspectRatio = `${b.w}/${b.h}`;
+    el.style.backgroundImage = `url("${url}")`;
+    el.style.backgroundSize = `${b.cols * 100}% ${rows * 100}%`;
+    el.style.backgroundPosition = `${b.cols > 1 ? col / (b.cols - 1) * 100 : 0}% ${rows > 1 ? row / (rows - 1) * 100 : 0}%`;
+  };
+  if (F.sheets[url]) return put(F.sheets[url]);
+  const img = new Image();   // the last sheet of an upload is shorter than the rest: its real size says how many rows it has
+  img.onload = () => { F.sheets[url] = Math.max(1, Math.round(img.naturalHeight / b.h)); put(F.sheets[url]); };
+  img.src = url;
+}
+
+function fSaveLabel(c) {
+  const job = F.saves[c.key], what = c.kind === 'still' ? 'still' : 'clip';
+  if (!job) return { text: `${ic('down')}Save ${what}`, cls: '' };
+  if (job.state === 'done') return { text: `${ic('check')}Saved`, cls: 'saved', off: true };
+  if (job.state === 'failed') return { text: 'Failed. Try again', cls: 'failed', tip: job.error };
+  return { text: job.state === 'saving' ? 'Saving…' : 'Waiting…', cls: '', off: true };
+}
+function fSaveButton(b, c) {
+  const s = fSaveLabel(c);
+  if (b.dataset.was === s.text) return;
+  b.dataset.was = s.text;
+  b.innerHTML = s.text;
+  b.className = `${b.id ? 'primary ' : ''}${s.cls}`.trim();
+  b.disabled = !!s.off;
+  b.title = s.tip || (c.site === 'youtube' ? `Download these ${Math.round(c.length)} seconds at full size, as an MP4 any editor opens` : 'Download it to the footage folder');
+}
+
+function fCard(c) {
+  const el = document.createElement('article');
+  el.className = 'clip';
+  el.dataset.key = c.key;
+  const projects = jobs.filter(j => j.ready);
+  el.innerHTML = `<div class="shot" ${c.thumb ? `style="background-image:url('${esc(c.thumb)}')"` : ''}>
+      ${c.thumb ? '' : `<span class="lbl">${esc(c.label || '')}</span>`}<div class="fr"></div>
+      <span class="q"></span><span class="where">${SITE_NAMES[c.site] || ''}</span>${c.start != null ? `<span class="len">${clock(c.start)} – ${clock(c.start + c.length)}</span>` : ''}
+      <span class="go">${ic('play')}</span></div>
+    <div class="body"><b title="${esc(c.title)}">${esc(c.title)}</b><small></small>
+      <div class="acts"><button data-fsave></button><span class="gap"></span>
+        <details class="more"><summary title="More">${ic('more')}</summary><div>
+          ${projects.map(j => `<button data-fadd="${esc(j.slug)}" title="Bring this source into that project's footage">Add to ${esc(j.title)}</button>`).slice(0, 8).join('')}
+          <a href="${esc(c.page)}" target="_blank" rel="noopener">Open where it came from</a>
+        </div></details></div></div>`;
+  const shot = el.firstElementChild;
+  let timer = 0;
+  shot.onmouseenter = () => {   // hover: the clip plays itself, or steps through its frames
+    if (c.preview && c.kind !== 'still') {
+      const v = document.createElement('video');
+      Object.assign(v, { src: c.preview, muted: true, loop: true, autoplay: true, playsInline: true });
+      shot.insertBefore(v, shot.querySelector('.q'));
+      return;
+    }
+    const b = (F.probes[c.id] || {}).board;
+    if (!b) return;
+    let t = c.start;
+    timer = setInterval(() => { t += 1 / b.fps; if (t > c.start + c.length) t = c.start; fSheet(shot.querySelector('.fr'), b, t); }, 420);
+  };
+  shot.onmouseleave = () => {
+    clearInterval(timer);
+    shot.querySelectorAll('video').forEach(v => { v.removeAttribute('src'); v.load(); v.remove(); });
+    const b = (F.probes[c.id] || {}).board;
+    if (b) fSheet(shot.querySelector('.fr'), b, c.start + 1);
+  };
+  shot.onclick = () => fPlay(c);
+  return el;
+}
+
+function fPaint(el, c) {
+  const q = el.querySelector('.q'), p = F.probes[c.id];
+  let text = '', cls = '', sub = c.sub || '';
+  if (c.site === 'youtube') {
+    if (!p) { text = 'Checking…'; cls = 'wait'; }
+    else if (!p.error) {
+      text = [tierName(p.tier), p.kbps ? `${(p.kbps / 1000).toFixed(p.kbps < 10000 ? 1 : 0)} Mbps` : '', p.fps >= 48 ? `${p.fps} fps` : '', p.hdr ? 'HDR' : ''].filter(Boolean).join(' · ');
+      cls = p.tier >= 2000 ? 'uhd' : p.tier >= 1000 ? 'hd' : '';
+      sub = p.channel || sub;
+      if (p.board && !el.dataset.framed) { el.dataset.framed = 1; fSheet(el.querySelector('.fr'), p.board, c.start + 1); }
+    }
+  } else {
+    text = c.kind === 'still' ? 'Still' : c.height ? `${c.height}p` : '';
+    cls = c.height >= 2000 ? 'uhd' : 'hd';
+  }
+  q.textContent = text;
+  q.className = `q ${cls}`;
+  q.hidden = !text;
+  el.querySelector('small').textContent = sub;
+  fSaveButton(el.querySelector('[data-fsave]'), c);
+}
+
+function fProbe() {   // ask YouTube what it really has for each upload on screen, a few at a time
+  for (const c of fVisible()) {
+    if (F.asking.size >= 4) break;
+    if (c.site !== 'youtube' || F.probes[c.id] || F.asking.has(c.id)) continue;
+    F.asking.add(c.id);
+    api(`/api/footage/probe?id=${c.id}`).then(p => { F.asking.delete(c.id); F.probes[c.id] = p; fDraw(); },
+      () => setTimeout(() => { F.asking.delete(c.id); fProbe(); }, 3000));   // the app is restarting: ask again shortly
+  }
+}
+
+function fDraw() {
+  const s = F.subject, grid = $('fgrid');
+  $('fsubject').hidden = $('ftools').hidden = !s;
+  $('fshuffle').innerHTML = `${ic('shuffle')}Shuffle`;
+  if (F.busy && !F.pool.length) {
+    grid.innerHTML = '<article class="clip ghost"><div class="shot"></div><div class="body"></div></article>'.repeat(12);
+    F.cards.clear();
+    $('fempty').hidden = true;
+    $('fmore').hidden = true;
+    return;
+  }
+  if (!F.cards.size) grid.innerHTML = '';
+  const list = fVisible(), keep = new Set(list.map(c => c.key));
+  for (const [k, el] of F.cards) if (!keep.has(k)) { el.remove(); F.cards.delete(k); }
+  let prev = null;
+  for (const c of list) {
+    let el = F.cards.get(c.key);
+    if (!el) { el = fCard(c); F.cards.set(c.key, el); }
+    fPaint(el, c);
+    const want = prev ? prev.nextSibling : grid.firstChild;
+    if (el !== want) grid.insertBefore(el, want);
+    prev = el;
+  }
+  if (!s) return;
+  const sites = [...new Set(F.pool.map(c => c.site))];
+  $('fsites').innerHTML = sites.length > 1 ? [['all', 'All'], ...sites.map(x => [x, SITE_NAMES[x]])].map(([id, name]) =>
+    `<button data-site="${id}" class="${F.site === id ? 'on' : ''}">${name}</button>`).join('') : '';
+  const soft = new Set(F.pool.filter(c => c.site === 'youtube' && !fPasses(c)).map(c => c.id)).size;
+  const left = F.pool.filter(c => (F.site === 'all' || c.site === F.site) && fPasses(c)).length - list.length;
+  $('fcount').textContent = [`${list.length} clips from ${F.uploads} sources`, soft ? `${soft} soft upload${soft > 1 ? 's' : ''} hidden` : '',
+    F.failed.length ? `${F.failed.join(', ')} did not answer` : ''].filter(Boolean).join(' · ');
+  $('fmore').hidden = !list.length;
+  $('fmore').textContent = left > 0 ? 'Show more' : 'Deal more';
+  $('fempty').hidden = list.length > 0;
+  if (!list.length) $('fempty').innerHTML = F.pool.length
+    ? `<b>Nothing that sharp.</b>None of the uploads found is ${F.min >= 2000 ? 'really 4K' : 'really 1080p'}. Set Sharpness to ${F.min >= 2000 ? '1080p and up' : 'Anything'}.`
+    : `<b>No footage found for ${esc(s.title)}.</b>Check the spelling, pick what it is, or add the film or show a character is from.`;
+  fProbe();
+}
+
+function fSubject() {
+  const s = F.subject;
+  if (!s) return;
+  const facts = [s.sub, s.kind !== 'anime' && s.year && !String(s.sub).includes(s.year) ? s.year : ''].filter(Boolean).join(' · ');
+  $('fsubject').innerHTML = `${s.image ? `<img referrerpolicy="no-referrer" alt="" src="${esc(s.image)}">` : '<span class="noimg"></span>'}
+    <div class="who"><span class="eyebrow">${KIND_NAMES[s.kind]}</span><h3 title="${esc(s.title)}">${esc(s.title)}</h3><div class="meta">${esc(facts)}</div></div>
+    ${s.kind === 'text' ? '' : `<button id="fmake" title="Start a new project: easyedit cuts a whole edit of it">Make an edit of it</button>`}`;
+  const others = F.subjects.filter(o => !sameSubject(o, s));
+  $('falts').hidden = !others.length;
+  $('falts').innerHTML = others.length ? 'Or did you mean' + others.map(o => `<button data-alt="${F.subjects.indexOf(o)}" title="${esc(o.sub || '')}">
+    ${o.image ? `<img referrerpolicy="no-referrer" alt="" src="${esc(o.image)}">` : '<i></i>'}<span>${esc(o.title)}</span><em>${esc(KIND_NAMES[o.kind])}${o.year && o.kind !== 'character' ? ` ${o.year}` : ''}</em></button>`).join('') : '';
+}
+
+async function fFind(pick, more) {   // pick: one of the suggested subjects. more: add another hand to the one on screen.
+  if (F.busy) return;
+  const q = pick ? F.q : $('fq').value.trim();
+  if (!pick && !q) return $('fq').focus();
+  F.busy = true;
+  $('fgo').disabled = $('fshuffle').disabled = true;
+  if (!more) { F.pool = []; F.shown = 24; F.site = 'all'; F.run++; window.scrollTo({ top: 0 }); }
+  if (!pick) { F.q = q; F.subject = null; F.subjects = []; $('falts').hidden = true; }
+  fDraw();
+  let res;
+  const ask = '/api/footage/search?' + new URLSearchParams({ q, kind: F.kind, len: F.len, seed: Math.floor(Math.random() * 1e9),
+                                                              ...(pick ? { pick: JSON.stringify(pick) } : {}) });
+  for (let tries = 0; !res; tries++) {   // the app restarts when it is updated: give it a few seconds to come back
+    try { res = await api(ask); } catch {
+      if (tries >= 3) res = { error: 'The easyedit app did not answer. Leave this page open and try again.' };
+      else await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  F.busy = false;
+  $('fgo').disabled = $('fshuffle').disabled = false;
+  if (res.error) {
+    fDraw();
+    $('fgrid').innerHTML = '';
+    $('fempty').hidden = false;
+    $('fempty').innerHTML = `<b>That did not work.</b>${esc(res.error)}`;
+    return;
+  }
+  F.subject = res.subject;
+  if (!pick) F.subjects = res.subjects;
+  F.uploads = res.uploads;
+  F.failed = res.failed || [];
+  const have = new Set(F.pool.map(c => c.key));
+  F.pool = more ? [...F.pool, ...res.clips.filter(c => !have.has(c.key))] : res.clips;
+  fSubject();
+  fDraw();
+  fSaved();
+}
+
+function fPlay(c) {
+  F.now = c;
+  const p = F.probes[c.id] || {};
+  $('fstage').innerHTML = c.site === 'youtube'
+    ? (p.embed === false ? `<span>This upload only plays on YouTube. <a href="${esc(c.page)}&t=${Math.floor(c.start)}s" target="_blank" rel="noopener">Open it there</a></span>`
+      : `<iframe allow="autoplay; encrypted-media; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+           src="https://www.youtube.com/embed/${c.id}?start=${Math.floor(c.start)}&end=${Math.ceil(c.start + c.length)}&autoplay=1&rel=0"></iframe>`)
+    : c.kind === 'still' ? `<img referrerpolicy="no-referrer" alt="" src="${esc(c.url)}">`
+    : `<video controls autoplay loop src="${esc(c.preview)}"></video>`;
+  $('fnowTitle').textContent = c.title;
+  $('fnowMeta').textContent = c.start != null ? `${clock(c.start)} – ${clock(c.start + c.length)}` : '';
+  $('fprev').hidden = $('fnext').hidden = $('fnowSave').hidden = !!c.kept;
+  if (!c.kept) { $('fnowSave').dataset.was = ''; fSaveButton($('fnowSave'), c); }
+  if (!$('fplayer').open) $('fplayer').showModal();
+}
+function fStep(by) {
+  const list = fVisible(), i = list.indexOf(F.now);
+  if (i >= 0 && list[i + by]) fPlay(list[i + by]);
+}
+
+async function fSave(c) {
+  const res = await api('/api/footage/save', { subject: F.subject ? F.subject.title : 'footage', clip: c });
+  if (res.error) return alert(res.error);
+  F.saves[c.key] = res;
+  fSaved();
+}
+
+async function fSaved() {   // what is kept on this computer, and how the saves under way are going
+  clearTimeout(F.poll);
+  let d;
+  try { d = await api('/api/footage/saved'); } catch { F.poll = setTimeout(fSaved, 3000); return; }
+  F.saves = d.jobs || {};
+  for (const [key, el] of F.cards) { const c = F.pool.find(x => x.key === key); if (c) fSaveButton(el.querySelector('[data-fsave]'), c); }
+  if (F.now && !F.now.kept && $('fplayer').open) fSaveButton($('fnowSave'), F.now);
+  const items = d.items || [], drawnKey = items.map(i => i.file).join('|');
+  $('fkeptHead').hidden = !items.length;
+  $('fkeptMeta').textContent = `${items.length} in ${d.folder} · ${d.free_gb} GB free`;
+  if ($('fkept').dataset.drawn !== drawnKey) {
+    $('fkept').dataset.drawn = drawnKey;
+    $('fkept').innerHTML = items.slice(0, 48).map(i => {
+      const src = `/footage/file/${i.file.split('/').map(encodeURIComponent).join('/')}`;
+      const facts = [i.subject, i.width ? `${i.width}×${i.height}` : '', i.duration ? `${i.duration} s` : '', `${i.size_mb} MB`].filter(Boolean).join(' · ');
+      return `<article class="clip" data-file="${esc(i.file)}" data-src="${esc(src)}" data-still="${i.still ? 1 : ''}" data-title="${esc(i.title || i.name)}">
+        <div class="shot">${i.still ? `<img loading="lazy" alt="" src="${esc(src)}">` : `<video preload="metadata" muted src="${esc(src)}#t=0.6"></video>`}<span class="go">${ic('play')}</span></div>
+        <div class="body"><b title="${esc(i.title || i.name)}">${esc(i.title || i.name)}</b><small>${esc(facts)}</small>
+          <div class="acts"><button data-fshow>Show the file</button><span class="gap"></span><button class="quiet" data-fforget>Delete</button></div></div></article>`;
+    }).join('');
+  }
+  if (Object.values(F.saves).some(j => j.state === 'queued' || j.state === 'saving')) F.poll = setTimeout(fSaved, 2000);
+}
+
+function fOptions() {
+  for (const b of $('fkind').children) b.classList.toggle('on', b.dataset.kind === F.kind);
+  for (const b of $('flen').children) b.classList.toggle('on', +b.dataset.len === F.len);
+  $('fmin').value = String(F.min);
+}
+$('fform').onsubmit = e => { e.preventDefault(); fFind(); };
+$('fkind').onclick = e => { const b = e.target.closest('button'); if (!b) return; F.kind = b.dataset.kind; ls('fkind', F.kind); fOptions(); if ($('fq').value.trim() && F.subject) fFind(); };
+$('flen').onclick = e => { const b = e.target.closest('button'); if (!b) return; F.len = +b.dataset.len; ls('flen', F.len); fOptions(); if (F.subject) fFind(F.subject); };
+$('fmin').onchange = () => { F.min = +$('fmin').value; ls('fmin', F.min); fDraw(); };
+$('fshuffle').onclick = () => F.subject && fFind(F.subject);
+$('fmore').onclick = () => {
+  F.shown += 24;
+  if (F.pool.filter(c => (F.site === 'all' || c.site === F.site) && fPasses(c)).length < F.shown) fFind(F.subject, true); else fDraw();
+};
+$('fsites').onclick = e => { const b = e.target.closest('button'); if (b) { F.site = b.dataset.site; fDraw(); } };
+$('falts').onclick = e => { const b = e.target.closest('button'); if (b) fFind(F.subjects[+b.dataset.alt]); };
+$('ffolder').onclick = () => api('/api/footage/reveal', {});
+$('fclose').onclick = () => $('fplayer').close();
+$('fprev').onclick = () => fStep(-1);
+$('fnext').onclick = () => fStep(1);
+$('fnowSave').onclick = () => F.now && fSave(F.now);
+$('fplayer').addEventListener('close', () => { $('fstage').innerHTML = ''; F.now = null; });
+$('fplayer').addEventListener('keydown', e => { if (e.key === 'ArrowRight') fStep(1); if (e.key === 'ArrowLeft') fStep(-1); });
+$('page-footage').addEventListener('click', async e => {
+  const b = e.target.closest('button'), d = b ? b.dataset : {};
+  if (b && d.try) { $('fq').value = d.try; return fFind(); }
+  if (b && b.id === 'fmake') { await start({ movie: F.subject.title, ...(F.subject.kind === 'anime' ? { anime: true } : {}) }); location.hash = '#projects'; return; }
+  const kept = e.target.closest('#fkept .clip');
+  if (kept) {
+    if (b && 'fshow' in d) return api('/api/footage/reveal', { file: kept.dataset.file });
+    if (b && 'fforget' in d) { if (confirm('Delete this saved clip from the footage folder?')) { await api('/api/footage/forget', { file: kept.dataset.file }); fSaved(); } return; }
+    if (e.target.closest('.shot')) fPlay({ kept: true, site: 'kept', kind: kept.dataset.still ? 'still' : 'video', url: kept.dataset.src, preview: kept.dataset.src, title: kept.dataset.title });
+    return;
+  }
+  const card = e.target.closest('#fgrid .clip'), c = card && F.pool.find(x => x.key === card.dataset.key);
+  if (!b || !c) return;
+  if ('fsave' in d) return fSave(c);
+  if (d.fadd) {
+    const res = await api(`/api/edit/${d.fadd}/clips/add`, { role: 'montage', item: { site: c.site, id: c.id, title: c.title, url: c.url, page: c.page } });
+    alert(res.error ? res.error : res.already ? 'That project is busy. Try again when its current run is done.'
+      : 'Added. The project is downloading it and reading its shots; open its editor to use them.');
+  }
+});
+
+$('findIcon').innerHTML = ic('search');
+fOptions();
+fSaved();
+showPage();
 renderPrompts();
 loadSetup(false);
 refresh();

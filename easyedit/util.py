@@ -52,7 +52,7 @@ def output(cmd: list, **kw) -> str:
 def probe(path: Path) -> dict:
     data = json.loads(output([
         "ffprobe", "-v", "error", "-show_entries",
-        "format=duration:stream=codec_type,width,height,avg_frame_rate,nb_frames",
+        "format=duration:stream=codec_type,width,height,avg_frame_rate,nb_frames,color_transfer",
         "-of", "json", path,
     ]))
     info = {"duration": float(data["format"].get("duration") or 0), "has_audio": False}
@@ -60,6 +60,7 @@ def probe(path: Path) -> dict:
         if s.get("codec_type") == "video" and "width" not in info:
             num, _, den = (s.get("avg_frame_rate") or "0/1").partition("/")
             info.update(width=int(s["width"]), height=int(s["height"]),
+                        hdr=s.get("color_transfer") in ("smpte2084", "arib-std-b67"),
                         fps=float(num) / float(den or 1) if float(den or 1) else 0.0)
         elif s.get("codec_type") == "audio":
             info["has_audio"] = True

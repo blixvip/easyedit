@@ -13,9 +13,18 @@ from .util import CACHE, ROOT, log, probe, run
 FONTS = {
     "Montserrat.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf",
     "Anton.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf",
+    # the caption text styles
+    "PlayfairDisplay-Italic.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay-Italic%5Bwght%5D.ttf",
+    "Cinzel.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf",
+    "SpecialElite.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/specialelite/SpecialElite-Regular.ttf",
+    "VT323.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/vt323/VT323-Regular.ttf",
+    "Caveat.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/Caveat%5Bwght%5D.ttf",
+    "PermanentMarker.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/permanentmarker/PermanentMarker-Regular.ttf",
 }
 CLI = ROOT / "node_modules" / "hyperframes" / "bin" / "hyperframes.mjs"
 PARALLEL = int(os.environ.get("EASYEDIT_PARALLEL", "2"))
+# the film layer is a WebGL shader pass: on the real GPU it is several times faster than software GL
+GPU = [] if os.environ.get("EASYEDIT_BROWSER_GPU") == "0" else ["--browser-gpu"]
 
 
 def ensure_fonts(dest: Path) -> None:
@@ -50,6 +59,11 @@ def encoder() -> list[str]:
 
 def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str) -> None:
     html = (ROOT / "template" / "index.html").read_text(encoding="utf-8")
+    depth = ""
+    if (render_dir / "depth.mp4").exists():  # white = near; the film layer reads it as a second texture
+        depth = ('  <video id="depth" class="clip" src="depth.mp4" data-start="0" data-duration="__DURATION__"\n'
+                 '         data-media-start="__MEDIA_START__" data-track-index="1" muted playsinline preload="auto"></video>')
+    html = html.replace("__DEPTH__", depth)
     html = (html.replace("__DURATION__", f"{dur:.4f}").replace("__FPS__", str(fps))
             .replace("__MEDIA_START__", f"{start:.4f}").replace("__SEGMENT_START__", f"{start:.4f}"))
     (render_dir / name).write_text(html, encoding="utf-8")
@@ -73,7 +87,13 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
     section_html(rd, 0, frames / fps, fps, "index.html")  # full composition for `hyperframes preview`
     work = job / "work" / "sections"
     work.mkdir(parents=True, exist_ok=True)
+    wanted = {f"section-{a}-{b}" for a, b in zip(marks, marks[1:])}
+    for old in work.glob("section-*"):   # leftovers from other frame rates or ranges would skew the progress count
+        if old.is_file() and old.stem not in wanted:
+            old.unlink(missing_ok=True)
     fresh_after = max((rd / "edit.js").stat().st_mtime, (ROOT / "template" / "film.js").stat().st_mtime)
+    if (rd / "depth.mp4").exists():
+        fresh_after = max(fresh_after, (rd / "depth.mp4").stat().st_mtime)
     env = {**os.environ, "HYPERFRAMES_NO_TELEMETRY": "1"}
     parts, jobs = [], []
     for k, (a, b) in enumerate(zip(marks, marks[1:])):
@@ -86,7 +106,7 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
         section_html(rd, a / fps, (b - a) / fps, fps, name)
         logf = work / f"section-{a}-{b}.log"
         cmd = ["node", str(CLI), "render", ".", "--composition", name, "--fps", str(fps), "--quality", quality,
-               "--low-memory-mode", "--workers", "1", "--frames-cache-dir", str(work / f"cache-{k}"),
+               "--low-memory-mode", "--workers", "1", *GPU, "--frames-cache-dir", str(work / f"cache-{k}"),
                "--output", str(part), "--quiet"]
         fh = logf.open("w", encoding="utf-8")
         jobs.append((subprocess.Popen(cmd, cwd=rd, env=env, stdout=fh, stderr=subprocess.STDOUT),
