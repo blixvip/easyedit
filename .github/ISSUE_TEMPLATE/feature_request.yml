@@ -1,0 +1,52 @@
+name: ✨ Feature request
+description: Suggest an idea or improvement for easyedit.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome! Two properties worth keeping in mind: easyedit is
+        **local-first** and needs **no API keys**, so ideas that hold onto both
+        are the ones that fit best.
+
+        Want to talk something through first? Drop it in the
+        [Discord](https://discord.gg/zEB4VjmfSb) or open a
+        [Discussion](https://github.com/blixvip/easyedit/discussions).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      placeholder: When I make an edit, I want to…
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What should easyedit do? Reference edits, screenshots, or an example command help a lot.
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part would this touch?
+      options:
+        - Source finding / downloading
+        - Transcription or captions
+        - Beat detection / montage
+        - Shot selection and framing
+        - Design and typography
+        - Rendering or export
+        - The CLI
+        - The web UI
+        - Not sure
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds you've tried
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be willing to open a pull request for this.

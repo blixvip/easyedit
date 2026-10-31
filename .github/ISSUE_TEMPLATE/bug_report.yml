@@ -1,0 +1,78 @@
+name: 🐞 Bug report
+description: Something in easyedit is broken or behaves unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Please run `python -m easyedit.doctor` first** and paste
+        the output below — it checks every requirement and usually names the problem.
+
+        You need **Python 3.10+**, **Node.js 22+**, and **FFmpeg and ffprobe** on your `PATH`.
+        For questions rather than bugs, the [Discord](https://discord.gg/zEB4VjmfSb) is faster.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Finding / downloading the source (fetch)
+        - Transcription (Whisper)
+        - Quote selection and caption line breaks
+        - Beat detection / montage cuts
+        - Shot scoring and framing
+        - The edit plan
+        - Rendering (HyperFrames, Chrome)
+        - Final assembly / audio mix
+        - Web UI
+        - Setup or doctor
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`python -m easyedit.doctor` output"
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you run, what did you expect, and what happened instead?
+      placeholder: "1. python -m easyedit \"Interstellar\"\n2. It said 'not enough usable montage shots'"
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: The exact command you ran
+      placeholder: python -m easyedit "The Wolf of Wall Street" --fps 30
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Terminal output, or the job's `run.log`. Pasted text is rendered as code.
+      render: shell
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11, macOS 15, Ubuntu 24.04…
+    validations:
+      required: true
+  - type: dropdown
+    id: llm
+    attributes:
+      label: Which --llm setting?
+      options:
+        - auto (default)
+        - claude
+        - codex
+        - none
+        - Not sure
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: "`git rev-parse --short HEAD`"
