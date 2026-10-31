@@ -270,6 +270,22 @@ def stop_job(slug: str) -> bool:
     return True
 
 
+def reveal_job(job: Path | None) -> dict:
+    """Open a completed job directory with the platform's file manager."""
+    if not job or not job.is_dir():
+        return {"ok": False, "error": "unknown edit"}
+    if os.name == "nt":
+        subprocess.Popen(["explorer", str(job)])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(job)])
+    else:
+        launcher = shutil.which("xdg-open")
+        if not launcher:
+            return {"ok": False, "error": "no file manager found"}
+        subprocess.Popen([launcher, str(job)])
+    return {"ok": True}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "easyedit"
 
@@ -392,10 +408,7 @@ class Handler(BaseHTTPRequestHandler):
                 job = safe_job(body.get("slug", ""))
                 return self._json({"stopped": bool(job) and stop_job(job.name)})
             if path == "/api/reveal":
-                job = safe_job(body.get("slug", ""))
-                if job and job.is_dir() and os.name == "nt":
-                    subprocess.Popen(["explorer", str(job)])
-                return self._json({"ok": bool(job and job.is_dir())})
+                return self._json(reveal_job(safe_job(body.get("slug", ""))))
             if path == "/api/delete":
                 job = safe_job(body.get("slug", ""))
                 if job and job.is_dir():
