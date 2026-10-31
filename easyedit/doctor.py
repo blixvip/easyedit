@@ -93,8 +93,15 @@ def tools() -> list[dict]:
 
     py_ok = sys.version_info >= (3, 10)
     add("Python", py_ok, sys.version.split()[0], "Install Python 3.10 or newer")
-    add("FFmpeg", shutil.which("ffmpeg") and shutil.which("ffprobe"),
-        "on PATH" if shutil.which("ffmpeg") else "missing", "Install FFmpeg and add it to PATH")
+    ffmpeg = shutil.which("ffmpeg")
+    ffprobe = shutil.which("ffprobe")
+    if not ffmpeg:
+        ffmpeg_detail = "ffmpeg missing"
+    elif not ffprobe:
+        ffmpeg_detail = "ffprobe missing"
+    else:
+        ffmpeg_detail = "on PATH"
+    add("FFmpeg", ffmpeg and ffprobe, ffmpeg_detail, "Install FFmpeg and add it to PATH")
     code, ver = _run(["node", "--version"])
     m = re.match(r"v(\d+)", ver or "")
     add("Node.js 22+", m and int(m.group(1)) >= 22, ver or "missing", "Install Node.js 22 or newer")
