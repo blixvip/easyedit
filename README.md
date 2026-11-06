@@ -250,6 +250,12 @@ tests/          unit tests (python -m pytest)
 AGENTS.md       the playbook for AI agents
 ```
 
+## Contributors
+
+Thank you to everyone who has helped build easyedit. New here? Read [CONTRIBUTING.md](CONTRIBUTING.md) and pick one of the [good first issues](https://github.com/blixvip/easyedit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+<a href="https://github.com/blixvip/easyedit/graphs/contributors"><img src="https://contrib.rocks/image?repo=blixvip/easyedit" alt="Contributors" /></a>
+
 ## Community
 
 💬 [Join the Discord](https://discord.gg/zEB4VjmfSb) for questions, help, feedback, and updates.
