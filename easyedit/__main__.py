@@ -11,10 +11,24 @@ import sys
 from pathlib import Path
 
 from . import assemble, beats, fetch, plan as planner, quote, render, shots, transcribe
-from .util import JOBS, log, need, read_json, slugify, write_json
+from .util import JOBS, die, log, need, read_json, slugify, write_json
 from .vision import FaceDetector
 
 BUILD_VERSION = 4  # bump when assemble output changes
+
+
+def preview_range(preview, frames=None, fps=None):
+    """Validate --preview START END. Dies on a reversed/empty/negative range; once the edit is
+    built, dies when START is past its end and clamps END to it (render only clamps END)."""
+    start, end = preview
+    if not (0 <= start < end):
+        die(f"--preview wants 0 <= START < END (seconds), got {start:g} {end:g}")
+    if frames is not None:
+        limit = frames / fps
+        if start >= limit:
+            die(f"--preview START {start:g}s is past the {limit:.1f}s edit")
+        return (start, min(end, limit))
+    return (start, end)
 
 
 def parse(argv=None):
@@ -43,6 +57,8 @@ def main(argv=None) -> None:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
     a = parse(argv)
+    if a.preview:
+        preview_range(a.preview)
     for b in ("ffmpeg", "ffprobe", "node"):
         need(b)
     if a.draft:
@@ -125,8 +141,9 @@ def main(argv=None) -> None:
         log(f"built {job / 'render'}; skipping render")
         return
     out = a.output or str(job / f"{slugify(a.movie)}{'-preview' if a.preview else ''}.mp4")
+    only = preview_range(a.preview, edit["frames"], edit["fps"]) if a.preview else None
     render.render(job, edit, Path(out), quality="draft" if a.draft else "high",
-                  only=tuple(a.preview) if a.preview else None)
+                  only=only)
 
 
 if __name__ == "__main__":
