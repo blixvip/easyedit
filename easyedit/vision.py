@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import subprocess
+import tempfile
 import urllib.request
 from pathlib import Path
 
 import numpy as np
 
-from .util import CACHE, log
+from .util import CACHE, check_ffmpeg, log
 
 YUNET_URL = ("https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/"
              "face_detection_yunet_2023mar.onnx")
@@ -28,19 +29,27 @@ def frames(path: Path, fps: float, width: int, start: float = 0.0, duration: flo
     if duration:
         cmd += ["-t", f"{duration:.3f}"]
     cmd += ["-an", "-vf", ",".join(vf), "-f", "rawvideo", "-pix_fmt", "bgr24", "-"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    size = width * height * 3
-    i = 0
-    try:
-        while True:
-            buf = proc.stdout.read(size)
-            if len(buf) < size:
-                break
-            yield start + i / fps, np.frombuffer(buf, np.uint8).reshape(height, width, 3)
-            i += 1
-    finally:
-        proc.stdout.close()
-        proc.wait()
+    with tempfile.TemporaryFile() as stderr:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=stderr)
+        size = width * height * 3
+        i = 0
+        completed = False
+        try:
+            while True:
+                buf = proc.stdout.read(size)
+                if len(buf) < size:
+                    break
+                yield start + i / fps, np.frombuffer(buf, np.uint8).reshape(height, width, 3)
+                i += 1
+            completed = True
+        finally:
+            proc.stdout.close()
+            if not completed and proc.poll() is None:
+                proc.terminate()
+            code = proc.wait()
+        stderr.seek(0, 2)
+        stderr.seek(max(0, stderr.tell() - 4096))
+        check_ffmpeg(code, stderr.read())
 
 
 def letterbox(path: Path, duration: float) -> tuple[int, int, int, int] | None:

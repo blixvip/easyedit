@@ -14,7 +14,6 @@ Writes to jobs/<movie>/qa/:
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +21,7 @@ import cv2
 import numpy as np
 
 from . import shots
-from .util import JOBS, probe, read_json, slugify
+from .util import JOBS, check_ffmpeg, probe, read_json, run, slugify
 
 TW, TH, COLS = 320, 180, 6
 
@@ -30,8 +29,9 @@ TW, TH, COLS = 320, 180, 6
 def _grab(src: Path, t: float, crop=None) -> np.ndarray | None:
     vf = (f"crop={crop[0]}:{crop[1]}:{crop[2]}:{crop[3]}," if crop else "") + \
          f"scale={TW}:{TH}:force_original_aspect_ratio=decrease,pad={TW}:{TH}:(ow-iw)/2:(oh-ih)/2"
-    p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0.0, t):.3f}", "-i", str(src), "-frames:v", "1",
-                        "-vf", vf, "-f", "rawvideo", "-pix_fmt", "bgr24", "-"], capture_output=True)
+    p = run(["ffmpeg", "-v", "error", "-ss", f"{max(0.0, t):.3f}", "-i", str(src), "-frames:v", "1",
+             "-vf", vf, "-f", "rawvideo", "-pix_fmt", "bgr24", "-"], capture_output=True, check=False)
+    check_ffmpeg(p.returncode, p.stderr)
     if len(p.stdout) != TW * TH * 3:
         return None
     return np.frombuffer(p.stdout, np.uint8).reshape(TH, TW, 3).copy()

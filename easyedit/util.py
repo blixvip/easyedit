@@ -46,6 +46,12 @@ def run(cmd: list, **kw) -> subprocess.CompletedProcess:
     return subprocess.run([str(c) for c in cmd], **kw)
 
 
+def check_ffmpeg(returncode: int, stderr: bytes) -> None:
+    if returncode:
+        tail = stderr[-4096:].decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"ffmpeg failed (exit {returncode}): {tail}")
+
+
 def output(cmd: list, **kw) -> str:
     return subprocess.run(
         [str(c) for c in cmd], check=True, capture_output=True, text=True,
