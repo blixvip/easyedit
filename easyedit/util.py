@@ -1,12 +1,14 @@
 """Shared helpers: logging, subprocess, ffprobe, paths."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,8 +28,10 @@ def die(msg: str) -> "None":
 
 
 def slugify(text: str) -> str:
-    s = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return s[:60] or "edit"
+    normalized = unicodedata.normalize("NFKD", text.lower())
+    normalized = "".join(c for c in normalized if not unicodedata.combining(c))
+    s = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+    return s[:60] or "edit-" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
 
 
 def need(binary: str) -> str:
