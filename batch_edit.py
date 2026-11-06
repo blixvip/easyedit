@@ -25,7 +25,10 @@ MIN_DISK_GB = 8.0  # sequential jobs stay under ~2 GB transient; report if the m
 
 
 def disk_gb() -> float:
-    return shutil.disk_usage("C:").free / 1e9
+    where = JOBS
+    while not where.exists() and where != where.parent:
+        where = where.parent
+    return shutil.disk_usage(where).free / 1e9
 
 
 def run(args: list[str], timeout: int) -> bool:
