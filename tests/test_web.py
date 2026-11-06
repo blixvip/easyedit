@@ -39,5 +39,17 @@ class RevealJobTest(unittest.TestCase):
         self.assertEqual(result, {"ok": False, "error": "no file manager found"})
 
 
+class ThumbnailAccessibilityTest(unittest.TestCase):
+    def test_gallery_markup_is_keyboard_and_screen_reader_friendly(self):
+        page = (Path(__file__).resolve().parent.parent / "easyedit" / "web" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<button class="thumb" style="${thumb}" data-play=', page)
+        self.assertIn('aria-label="Play ${esc(job.title)}"', page)
+        self.assertIn('role="progressbar"', page)
+        self.assertIn('aria-valuenow="${pct}"', page)
+        self.assertIn('id="runs" aria-live="polite"', page)
+        # Enter/Space on a native button fire a click, so the delegated handler must match buttons.
+        self.assertIn("closest('button, [data-play]')", page)
+
+
 if __name__ == "__main__":
     unittest.main()
