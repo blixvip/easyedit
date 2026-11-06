@@ -83,7 +83,8 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
   .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
           display: flex; flex-direction: column; }
-  .tile .thumb { aspect-ratio: 16/9; background: #05060a center/cover no-repeat; cursor: pointer; position: relative; }
+  .tile .thumb { aspect-ratio: 16/9; background: #05060a center/cover no-repeat; cursor: pointer; position: relative;
+    display: block; width: 100%; padding: 0; border: 0; border-radius: 0; font: inherit; }
   .tile .thumb::after { content: "▶"; position: absolute; inset: 0; display: grid; place-items: center;
     font-size: 30px; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.8); opacity: .88; }
   .tile .thumb.empty::after { content: ""; }
@@ -171,7 +172,7 @@
 
 <div id="runsWrap" hidden>
   <h2>Working</h2>
-  <div class="runs" id="runs"></div>
+  <div class="runs" id="runs" aria-live="polite"></div>
 </div>
 
 <h2 id="edits">Edits</h2>
@@ -282,7 +283,7 @@ function runCard(job) {
       <strong>${esc(job.title)}</strong>
       <span class="pill ${job.error ? 'err' : ''}">${esc(status)}</span>
     </div>
-    <div class="bar"><i style="width:${pct}%"></i></div>
+    <div class="bar" role="progressbar" aria-label="${esc(job.title)} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
     <div class="row" style="justify-content:space-between">
       <span class="meta">${pct}%</span>
       <span class="row">
@@ -298,7 +299,9 @@ function tile(job) {
   const thumb = job.thumb ? `background-image:url('${esc(job.thumb)}?t=${Math.round(job.updated)}')` : '';
   const state = job.running ? (job.stage || 'working') : 'not rendered';
   return `<div class="tile">
-    <div class="thumb ${job.video ? '' : 'empty'}" style="${thumb}" ${job.video ? `data-play="${esc(job.slug)}"` : ''}></div>
+    ${job.video
+      ? `<button class="thumb" style="${thumb}" data-play="${esc(job.slug)}" aria-label="Play ${esc(job.title)}"></button>`
+      : `<div class="thumb empty" style="${thumb}"></div>`}
     <div class="body">
       <h3>${esc(job.title)}</h3>
       <div class="meta">${job.video ? `${fmt(job.duration)} · ${job.size} MB · ${ago(job.updated)}`
