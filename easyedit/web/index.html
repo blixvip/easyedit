@@ -104,6 +104,17 @@
   dialog video { display: block; width: 100%; max-height: 74vh; background: #000; }
   dialog .bottom { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
   .empty-state { color: var(--dim); }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   @media (max-width: 640px) {
     body { padding: 20px 16px 60px; }
     .prompt { flex-direction: column; }
@@ -129,19 +140,20 @@
 
 <div class="card">
   <form class="prompt" id="form">
+    <label for="movie" class="sr-only">Movie name</label>
     <input id="movie" placeholder="Movie name — e.g. Gladiator" autocomplete="off" autofocus>
     <button id="go">Make the edit</button>
   </form>
   <div class="optbar"><button class="toggle" type="button" id="toggle">Options ▾</button><span class="writer" id="writer"></span></div>
   <div class="opts" id="opts">
-    <div><label>Speech scene (file, URL or search)</label><input id="speech" placeholder="auto"></div>
-    <div><label>Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
-    <div><label>Song (file, URL or search)</label><input id="music" placeholder="auto"></div>
-    <div><label>Frame rate</label><select id="fps"><option value="">60 (default)</option><option>30</option><option>24</option></select></div>
-    <div><label>Montage seconds</label><input id="montage_length" placeholder="21" inputmode="decimal"></div>
-    <div><label>Final shot seconds</label><input id="hero_length" placeholder="3.4" inputmode="decimal"></div>
-    <div><label>Writer</label><select id="llm"><option value="">auto</option><option>claude</option><option>codex</option><option>none</option></select></div>
-    <div><label>Speed</label><select id="draft"><option value="">full quality</option><option value="1">draft (30fps, fast)</option></select></div>
+    <div><label for="speech">Speech scene (file, URL or search)</label><input id="speech" placeholder="auto"></div>
+    <div><label for="montage">Montage sources (comma separated)</label><input id="montage" placeholder="auto"></div>
+    <div><label for="music">Song (file, URL or search)</label><input id="music" placeholder="auto"></div>
+    <div><label for="fps">Frame rate</label><select id="fps"><option value="">60 (default)</option><option>30</option><option>24</option></select></div>
+    <div><label for="montage_length">Montage seconds</label><input id="montage_length" placeholder="21" inputmode="decimal"></div>
+    <div><label for="hero_length">Final shot seconds</label><input id="hero_length" placeholder="3.4" inputmode="decimal"></div>
+    <div><label for="llm">Writer</label><select id="llm"><option value="">auto</option><option>claude</option><option>codex</option><option>none</option></select></div>
+    <div><label for="draft">Speed</label><select id="draft"><option value="">full quality</option><option value="1">draft (30fps, fast)</option></select></div>
   </div>
 </div>
 
@@ -149,6 +161,7 @@
   <h2 style="margin-top:0">Design from a picture</h2>
   <p class="section-lead">Import a PNG, JPEG, or WebP. The page designs a poster from that picture's colors and light.</p>
   <form class="prompt" id="designForm">
+    <label for="picture" class="sr-only">Upload picture</label>
     <input id="picture" name="picture" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
     <button type="submit" id="designGo">Design it</button>
   </form>
