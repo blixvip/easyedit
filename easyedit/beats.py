@@ -1,19 +1,20 @@
 """Beat tracking and 'drop' detection with numpy only (spectral flux + DP beat tracker)."""
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import numpy as np
 
-from .util import log, read_json, write_json
+from .util import check_ffmpeg, log, read_json, run, write_json
 
 SR, HOP, NFFT = 22050, 512, 2048
 
 
 def load_audio(path: Path) -> np.ndarray:
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ac", "1", "-ar", str(SR),
-                          "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    result = run(["ffmpeg", "-v", "error", "-i", str(path), "-ac", "1", "-ar", str(SR),
+                  "-f", "s16le", "-"], capture_output=True, check=False)
+    check_ffmpeg(result.returncode, result.stderr)
+    raw = result.stdout
     return np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
 
 
