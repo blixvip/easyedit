@@ -140,7 +140,8 @@ def main(argv=None) -> None:
                               montage_len=a.montage_length, hero_len=a.hero_length)
         key_file.write_text(key)
     if a.no_render:
-        log(f"built {job / 'render'}; skipping render")
+        render_dir = render.prepare_preview(job, edit)
+        log(f"built {render_dir}; preview it with: cd {render_dir} && npx hyperframes preview")
         return
     out = a.output or str(job / f"{slugify(a.movie)}{'-preview' if a.preview else ''}.mp4")
     only = preview_range(a.preview, edit["frames"], edit["fps"]) if a.preview else None
