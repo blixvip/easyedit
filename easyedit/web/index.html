@@ -318,6 +318,26 @@ function tile(job) {
 }
 
 let jobs = [];
+
+// Re-rendering destroys the focused button, so remember which one it was: its data-* attribute, its value and
+// its position among buttons with that same attribute (labels can change, e.g. "Show log" / "Hide log")...
+function focusKey() {
+  const el = document.activeElement;
+  const scope = el && el.closest('#runs, #grid');
+  const attr = scope && [...el.attributes].find(a => a.name.startsWith('data-'));
+  if (!attr) return null;
+  const same = [...scope.querySelectorAll(`[${attr.name}]`)].filter(e => e.getAttribute(attr.name) === attr.value);
+  return { scope: scope.id, attr: attr.name, value: attr.value, index: same.indexOf(el) };
+}
+
+// ...and put focus back on the matching new button.
+function restoreFocus(key) {
+  if (!key) return;
+  const match = [...document.querySelectorAll(`#${key.scope} [${key.attr}]`)]
+    .filter(el => el.getAttribute(key.attr) === key.value)[key.index];
+  if (match) match.focus({ preventScroll: true });
+}
+
 async function refresh() {
   let data;
   try { data = await api('/api/jobs'); } catch { return; }
@@ -327,9 +347,11 @@ async function refresh() {
   document.querySelectorAll('pre[id^="log-"]').forEach(el => {
     if (el.textContent && el.textContent !== 'loading…') kept[el.id] = { text: el.textContent, scroll: el.scrollTop };
   });
+  const focus = focusKey();
   $('runsWrap').hidden = !running.length;
   $('runs').innerHTML = running.map(runCard).join('');
   $('grid').innerHTML = jobs.map(tile).join('');
+  restoreFocus(focus);
   $('empty').hidden = jobs.length > 0;
   for (const [id, saved] of Object.entries(kept)) {
     const el = $(id);
