@@ -9,7 +9,7 @@ body:
         the output below — it checks every requirement and usually names the problem.
 
         You need **Python 3.10+**, **Node.js 22+**, and **FFmpeg and ffprobe** on your `PATH`.
-        For questions rather than bugs, the [Discord](https://discord.gg/wJfHQXfEMM) is faster.
+        For questions rather than bugs, the [Discord](https://discord.gg/grokbot) is faster.
   - type: dropdown
     id: area
     attributes:
