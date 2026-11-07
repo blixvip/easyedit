@@ -127,6 +127,84 @@ Speech is transcribed as English, so the speech clip must be the English dub.
 
 The user can watch progress in the browser while you poll.
 
+## A reel from a topic alone
+
+```bash
+python -m easyedit.reel "Genghis Khan" --style nio_trade --template Dcc45l-PonG --no-render
+python -m easyedit.reel "Genghis Khan" --style nio_trade --template Dcc45l-PonG
+```
+
+`reel` writes an original script in the creator's shape (hook line, 60-80 word narration, closing card, picture
+and footage searches) with the user's Claude/Codex login, speaks it with neural TTS, pulls the pictures from
+Wikimedia Commons (credits in `footage/reels/<slug>/images/credits.txt`), searches YouTube for moving footage,
+picks a track by tempo and drop, and runs the own-footage build below. `--script file.json` uses a script you
+wrote; `--music` your track; `--no-footage` pictures only. Check `jobs/<slug>/qa/` the same way before the render.
+
+## Your own footage, in a creator's style
+
+easyedit can also cut clips the user already has, the way a creator they like cuts. Two steps:
+
+**1. Measure the creator** (once per creator). Put their reels in `styles/<name>/reels/*.mp4`, then
+
+```bash
+python -m easyedit.style analyze <name>          # -> styles/<name>/style.json, report.txt, sheets/
+python -m easyedit.style report <name>           # the report again, plain text, cheap to read
+```
+
+`report.txt` says what was measured: cut lengths and how they sit on the beat, speed ramps, camera moves,
+grade, where the captions are and how they behave (word by word or a static hook line), flashes, shakes,
+faces, speech share, sound hits, and how the reels open and close. It splits the reels into `voiceover`
+(talking over pictures) and `montage` (music and cuts). Read it before cutting anything; if a number looks
+wrong, look at `sheets/<id>.jpg` (30 frames of one reel) and `sheets/<id>-cuts.jpg` (the first frame after
+every cut). Only measurements are kept; nothing from the reels ever goes into an edit.
+
+Getting reels off Instagram: `python -m easyedit.style pull <handle>` prints the recipe (yt-dlp no longer
+works there; the Aside browser REPL plus `tools/ig_pull.js` does, with `pull <handle> --receive` catching
+the files). A folder of mp4s from anywhere works the same: `analyze C:\path	oolder`.
+
+**2. Cut the user's clips**
+
+```bash
+python -m easyedit "my reel" --footage C:\clips --music C:\song.mp3 --style <name> --aspect 9:16 --no-render
+python -m easyedit "my reel" --footage C:\clips --speech talk.wav --music C:\song.mp3 --style <name> --template <reel> --cards C:\shots --cta "TITLE|@handle" --hook "the hook line:" --aspect 9:16
+python -m easyedit.sheet my-reel                 # qa/footage.jpg: is the crop right, faces in frame?
+python -m easyedit "my reel" --footage C:\clips --music C:\song.mp3 --style <name> --aspect 9:16
+python -m easyedit.style compare my-reel <name>  # qa/style-compare.txt: the render measured like a reel
+```
+
+- No `--music` with `--style`: the tool searches for a track itself (`music.py`: the profile's `music_queries`
+  or phonk/edit-audio defaults), downloads a few, and keeps the one whose tempo is nearest the creator's bpm
+  with the hardest drop; the choice is remembered in `jobs/<slug>/music-pick.json` (delete it to pick again).
+  A track the user gives always wins.
+- `--hook "text"` in a voiceover edit holds the line on the first frame for the template's hook time (2.5 s
+  without a template) and the narration starts after it, the way a hook card runs before the voice.
+- `--footage` takes files, folders, URLs or search queries (`yt:"napoleon 2023 trailer 4k"`): found clips are
+  downloaded and trimmed like any upload. `--music` is required (every cut lands on its beats).
+- Speech: `--speech talk.mp4`, or narration found in the footage itself. `--captions whole` captions every
+  word (voiceover reels), `pick` picks one passage like a film quote, `none` makes a pure montage.
+- `--aspect 9:16` is a 1080x1920 canvas. `--fit cover` fills it and crops (faces are kept in frame);
+  `--fit box` keeps the whole picture with bars, which is the default when the creator's own reels are not
+  portrait (many post 4:3 or square inside the reel frame).
+- The profile sets the cut pattern, ramps, moves, grade, captions, sound hits and the length; `--montage-length`,
+  `--hero-length`, `--no-velocity` override it. The layout is written to `timeline.json` and then cut by the
+  sequence build, so the editor can move every clip, and `curate.json` still pins or excludes shots.
+- Pass the same `--footage/--music/--style/--aspect` flags on every later run (the editor does, via settings.json).
+- **Template mode, the closest match.** `python -m easyedit.style templates <name>` lists the measured reels
+  (mode, length, cuts, cards, hook hold, outro). `--template <reel id>` then rebuilds that one reel's structure
+  with your material: its cut times stretched to your narration, its opening hold, its card inserts where it
+  has them (`--cards img1.png img2.png ...` or a folder, popped in with a punch and a luma dissolve), and its
+  closing card (`--cta "LINE ONE|line two"`, black card of the reel's outro length). `--hook "text"` holds a
+  line from the first frame for the reel's hook time. In voiceover edits every cut is nudged onto a word start
+  and every sentence starts on a cut. Cards and the end card are listed under `card` in sources.json.
+- Typical creator structure seen in the measurements: one long opening hold (6-9 s, often a screenshot or a
+  talking clip) with the hook line, then a burst of 0.2-0.5 s cuts, card pops, a 4-9 s black text card to close.
+  Give the tool at least one clip long enough to carry the opening hold (a 12 s still-with-push works).
+- The layout is made once; to lay the footage out again after changing `--style`, `--captions` or the song, add
+  `--fresh` (the old layout is kept as `timeline.before-fresh.json`).
+
+`compare` measures the finished video exactly like a reel and prints profile | output | delta for the cut
+length, beat alignment, mono share, grade, caption position and size, flashes and ramps.
+
 ## Troubleshooting
 
 See the troubleshooting table in `README.md`. The most common problems are 403s from YouTube (upgrade yt-dlp)

@@ -236,7 +236,18 @@
     main { padding: 16px 14px 60px; }
     .prompt { flex-direction: column; }
     .find { width: 100%; }
+    #bar { padding: 0 8px; gap: 0; }
+    #bar .logo { padding-right: 8px; margin-right: 0; flex: none; }
+    #bar .logo img { height: 17px; }
+    #tabs { min-width: 0; overflow-x: auto; }
+    #tabs a { padding: 0 9px; white-space: nowrap; }
+    #grid { grid-template-columns: repeat(auto-fill, minmax(min(286px, 100%), 1fr)); }
+    .notice, dialog .bottom, #fplayer .bottom .row { flex-wrap: wrap; }
+    .opts { grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); }
+    #fkind { flex-wrap: wrap; gap: 4px 0; }
   }
+  #createStatus { margin: 9px 0 0; overflow-wrap: anywhere; color: var(--dim); }
+  #createStatus.error, #connection { color: var(--bad); }
 </style>
 </head>
 <body>
@@ -266,6 +277,7 @@
           <input id="movie" aria-label="Film or anime to make a project of" placeholder="Gladiator, Jujutsu Kaisen, Blade Runner 2049…" autocomplete="off" spellcheck="false">
           <button class="primary" id="go">Make it</button>
         </form>
+        <p id="createStatus" role="status" aria-live="polite" hidden></p>
         <div class="optbar">
           <span>It is</span>
           <span class="seg" id="kindSeg"><button type="button" data-kind="" class="on" title="easyedit looks the title up and decides">Auto</button><button type="button" data-kind="film">a film</button><button type="button" data-kind="anime" title="Dub speech, twixtor and scenepack footage, anime grade">an anime</button></span>
@@ -285,6 +297,7 @@
       <div class="card" id="resume" hidden></div>
     </div>
 
+    <p id="connection" role="status" aria-live="polite">Loading projects…</p>
     <div id="tools">
       <h2>Your projects</h2>
       <div class="find"><span id="findIcon"></span><input id="q" aria-label="Search projects" placeholder="Search projects" autocomplete="off" spellcheck="false"></div>
@@ -487,7 +500,11 @@ const ic = name => `<svg class="i" viewBox="0 0 24 24">${String(PATHS[name] || '
   const kind = /^[tfd] /.test(l) ? l[0] : '';
   return `<path${kind ? ` class="${kind}"` : ''} d="${kind ? l.slice(2) : l}"/>`;
 }).join('')}</svg>`;
-const fmt = s => s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+const fmt = s => {
+  if (s == null) return '';
+  const seconds = Math.max(0, Math.round(Number(s) || 0));
+  return Number.isFinite(seconds) ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : '0:00';
+};
 const ago = t => {
   const m = (Date.now() / 1000 - t) / 60;
   if (m < 1) return 'just now';
@@ -533,14 +550,31 @@ function editBody(movie) {
 }
 
 async function start(body) {
+  const status = $('createStatus');
+  status.hidden = false;
+  status.className = '';
+  status.textContent = 'Starting project…';
   try {
     const res = await api('/api/new', body);
-    if (res.error) return alert(res.error);
-    if (res.already) return alert('That project is already being worked on.');
+    if (res.error) {
+      status.className = 'error';
+      status.textContent = res.error;
+      if (res.exists && res.slug) {
+        const link = document.createElement('a');
+        link.href = `/editor/${encodeURIComponent(res.slug)}`;
+        link.textContent = ' Open project';
+        status.append(link);
+      }
+      return false;
+    }
     openLogs.add(res.slug);
-    refresh();
+    status.textContent = res.already ? 'This project is already running. Follow its progress below.' : 'Project started. Follow its progress below.';
+    await refresh();
+    return true;
   } catch {
-    alert('The easyedit app did not answer. Leave this page open and try again.');
+    status.className = 'error';
+    status.textContent = 'The easyedit app did not answer. Your settings are kept; try again.';
+    return false;
   }
 }
 $('form').onsubmit = async e => {
@@ -548,9 +582,9 @@ $('form').onsubmit = async e => {
   const movie = $('movie').value.trim();
   if (!movie) return $('movie').focus();
   $('go').disabled = true;
-  await start(editBody(movie));
+  const started = await start(editBody(movie));
   $('go').disabled = false;
-  $('movie').value = '';
+  if (started) $('movie').value = '';
   renderPrompts();
 };
 
@@ -598,7 +632,7 @@ function card(j) {
       ${openLogs.has(j.slug) && j.running ? `<pre id="log-${slug}">loading…</pre>` : ''}
       <div class="acts">${main}<span class="gap"></span>
         <details class="more"><summary title="More">${ic('more')}</summary><div>
-          ${j.ready && !j.running ? `<button data-again="${slug}">Make it again from scratch</button>` : ''}
+          ${j.ready && !j.running && !j.missing ? `<button data-again="${slug}" title="Cut and render it again with your choices in the editor">Export it again</button>` : ''}
           ${j.missing && !j.running ? `<button data-restore="${slug}" title="Downloads the same files again, so the project can be edited and exported">Download its footage again</button>` : ''}
           <button data-folder="${slug}">Show its folder</button>
           <button class="danger" data-delete="${slug}">Delete project</button>
@@ -639,7 +673,15 @@ function draw() {
 
 async function refresh() {
   let data;
-  try { data = await api('/api/jobs'); } catch { return; }
+  try {
+    data = await api('/api/jobs');
+    if (data.error || !Array.isArray(data.jobs)) throw new Error(data.error || 'Could not load projects.');
+    $('connection').hidden = true;
+  } catch {
+    $('connection').hidden = false;
+    $('connection').textContent = 'Connection lost. Reconnecting… Your projects and input are kept.';
+    return;
+  }
   jobs = data.jobs || [];
   // nothing changed: leave the page alone, so an open menu or a hover is not torn down every few seconds
   const now = JSON.stringify([jobs.map(j => [j.slug, j.running, j.stage, j.progress, j.video, j.ready, j.cut, j.failed, Math.round(j.updated / 60), j.kind]), [...openLogs]]);
@@ -656,7 +698,7 @@ async function refresh() {
 async function pullLog(slug) {
   const el = $(`log-${slug}`);
   if (!el) return;
-  const data = await api(`/api/log/${slug}`);
+  const data = await api(`/api/log/${slug}`).catch(() => ({log: 'Connection lost. Retrying…'}));
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
   el.textContent = data.log || '(no output yet)';
   if (atBottom) el.scrollTop = el.scrollHeight;
@@ -684,12 +726,13 @@ document.addEventListener('click', async e => {
     $('playerEdit').href = `/editor/${job.slug}`;
     $('playerEdit').hidden = !job.ready;
     $('player').showModal();
-    $('video').play();
+    $('video').play().catch(() => {});
   } else if (d.log) {
     openLogs.has(d.log) ? openLogs.delete(d.log) : openLogs.add(d.log);
     refresh();
   } else if (d.stop) {
-    await api('/api/stop', { slug: d.stop });
+    const res = await api('/api/stop', { slug: d.stop }).catch(() => ({error: 'The easyedit app did not answer. Try again.'}));
+    if (res.error) return alert(res.error);
     refresh();
   } else if (d.restore) {
     const res = await api(`/api/edit/${d.restore}/clips/restore`, {}).catch(() => ({ error: 'The easyedit app did not answer.' }));
@@ -699,12 +742,20 @@ document.addEventListener('click', async e => {
   } else if (d.folder) {
     api('/api/reveal', { slug: d.folder });
   } else if (d.again) {
-    if (job.ready && !confirm(`Make "${job.title}" again? It is cut and rendered from the start; your choices in the editor are kept.`)) return;
+    if (job.ready) {   // the same run as Export in the editor: its frame rate, lengths, cut rate and sound come along
+      if (!confirm(`Export "${job.title}" again? It is cut and rendered from the start with your choices in the editor.`)) return;
+      const res = await api(`/api/edit/${job.slug}/run`, { mode: 'full' }).catch(() => ({ error: 'The easyedit app did not answer.' }));
+      if (res.error) return alert(res.error);
+      if (res.already) return alert('That project is already being worked on.');
+      openLogs.add(job.slug);
+      return refresh();
+    }
     // the folder's own name is sent, so the run lands in this project whatever its title has become
-    await start({ movie: job.slug.replace(/-/g, ' ') });
+    await start({ movie: job.title, resume: job.slug });
   } else if (d.delete) {
     if (confirm(`Delete "${job.title}" and everything downloaded for it? This cannot be undone.`)) {
-      await api('/api/delete', { slug: d.delete });
+      const res = await api('/api/delete', { slug: d.delete }).catch(() => ({error: 'The easyedit app did not answer. Try again.'}));
+      if (res.error || !res.deleted) return alert(res.error || 'The project could not be deleted. Try again.');
       drawn = '';
       refresh();
     }

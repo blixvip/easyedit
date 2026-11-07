@@ -56,15 +56,26 @@ html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflo
 
   const E = window.EDIT, total = E.frames / E.fps;
   let playing = false;
+  // a paused picture is only painted again when something changed: the time, a decoded frame, or the edit
+  let drawn = -1, told = '', dirty = 2;
+  const poke = () => { dirty = 2; };
+  for (const el of [video, depth].filter(Boolean)) for (const ev of ['loadeddata', 'seeked', 'canplay']) el.addEventListener(ev, poke);
+  if (document.fonts) document.fonts.addEventListener('loadingdone', poke);
   const tell = () => { try { parent.easyeditTick && parent.easyeditTick(video.currentTime, playing); } catch { /* alone */ } };
   function frame() {
-    window.drawFrame(video.currentTime);
-    if (depth && Math.abs(depth.currentTime - video.currentTime) > (playing ? 0.07 : 0.001)) depth.currentTime = video.currentTime;
-    if (playing) {
-      if (Math.abs(sound.currentTime - video.currentTime) > 0.12) sound.currentTime = video.currentTime;
-      if (video.ended || video.currentTime >= total - 0.02) api.pause();
+    const t = video.currentTime;
+    if (playing || dirty > 0 || t !== drawn) {
+      window.drawFrame(t);
+      drawn = t;
+      if (dirty > 0) dirty--;
     }
-    tell();
+    if (depth && Math.abs(depth.currentTime - t) > (playing ? 0.07 : 0.001)) depth.currentTime = t;
+    if (playing) {
+      if (Math.abs(sound.currentTime - t) > 0.12) sound.currentTime = t;
+      if (video.ended || t >= total - 0.02) api.pause();
+    }
+    const now = `${t}|${playing}`;
+    if (playing || now !== told) { told = now; tell(); }
     requestAnimationFrame(frame);
   }
   const api = window.player = {
@@ -82,11 +93,13 @@ html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflo
     pause() { playing = false; video.pause(); sound.pause(); if (depth) depth.pause(); },
     seek(t) { video.currentTime = Math.max(0, Math.min(total - 0.001, t)); if (playing) sound.currentTime = video.currentTime; },
     volume(x) { sound.volume = x; },
+    redraw: poke,
     // captions and the title are read every frame, so these show up without a reload
-    setCaptions(lines) { E.captions.length = 0; E.captions.push(...lines); },
-    setTitle(text) { E.title = text; },
+    setCaptions(lines) { E.captions.length = 0; E.captions.push(...lines); poke(); },
+    setTitle(text) { E.title = text; poke(); },
     // camera moves and effects per shot; needs the shot ids that newer builds write into edit.js
     setShotOpts(byId) {
+      poke();
       for (const s of E.shots) {
         if (!s.id) return false;
         const o = byId[s.id] || {};

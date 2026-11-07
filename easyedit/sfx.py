@@ -65,8 +65,14 @@ def riser(seed: int, dur: float = 1.8) -> np.ndarray:
     return _stereo(y, wobble.astype(np.float32))
 
 
-def build(out: Path, total: float, drop: float, cuts: list[float], hero: float) -> Path:
-    """Write the effects track for one edit. `cuts` are the montage cut times after the drop."""
+LEVELS = {"riser": 0.5, "impact": 0.95, "whoosh": 0.34, "hero": 1.0}
+
+
+def build(out: Path, total: float, drop: float, cuts: list[float], hero: float | None,
+          levels: dict | None = None) -> Path:
+    """Write the effects track for one edit. `cuts` are the montage cut times after the drop;
+    `hero` None means no final shot gets its whoosh and hit. `levels` scale each sound (0 drops it)."""
+    lv = {**LEVELS, **{k: float(v) for k, v in (levels or {}).items() if k in LEVELS}}
     buf = np.zeros((int(total * SR) + SR, 2), np.float32)
 
     def place(sound: np.ndarray, at: float, gain: float) -> None:
@@ -77,16 +83,19 @@ def build(out: Path, total: float, drop: float, cuts: list[float], hero: float) 
         if j > i:
             buf[i:j] += sound[: j - i] * gain
 
-    if drop > 2.4:
+    if drop > 2.4 and lv["riser"] > 0:
         r = riser(7)
-        place(r, drop - len(r) / SR, 0.5)
-    place(impact(11), drop, 0.95)
-    for k, t in enumerate(cuts):
-        w, lead = whoosh(100 + k, left_to_right=k % 2 == 0)
-        place(w, t - lead, 0.34)
-    w, lead = whoosh(999, dur=0.7)
-    place(w, hero - lead, 0.5)
-    place(impact(13, dur=1.4), hero, 1.0)
+        place(r, drop - len(r) / SR, lv["riser"])
+    if lv["impact"] > 0:
+        place(impact(11), drop, lv["impact"])
+    if lv["whoosh"] > 0:
+        for k, t in enumerate(cuts):
+            w, lead = whoosh(100 + k, left_to_right=k % 2 == 0)
+            place(w, t - lead, lv["whoosh"])
+    if hero is not None and lv["hero"] > 0:
+        w, lead = whoosh(999, dur=0.7)
+        place(w, hero - lead, 0.5 * lv["hero"])
+        place(impact(13, dur=1.4), hero, lv["hero"])
     pcm = (np.clip(buf[: int(total * SR)], -1, 1) * 32767).astype(np.int16)
     out.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(out), "wb") as f:

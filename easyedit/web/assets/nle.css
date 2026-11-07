@@ -1,0 +1,102 @@
+/* The editing-desk layer for the editor: track lanes, filmstrip clips, waveforms, tool strip, audio meters and the
+   transport under the viewer. Same grey panels and blue accent as the rest of the page. Drawn by nle.js. */
+
+/* thin dark scrollbars, as an editor has */
+* { scrollbar-width: thin; scrollbar-color: #4a4a4a #1c1c1c; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: #1c1c1c; }
+*::-webkit-scrollbar-thumb { background: #454545; border: 2px solid #1c1c1c; border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: #5c5c5c; }
+*::-webkit-scrollbar-corner { background: #1c1c1c; }
+
+/* ---------- transport under the viewer ---------- */
+body.nle #prev { display: none; }
+body.nle #mon > #transport { display: flex; align-items: center; gap: 2px; height: 36px; padding: 0 10px; flex: none;
+  background: #232323; border-top: 1px solid var(--line); }
+body.nle #mon > #transport::before { content: ""; flex: 1; }
+body.nle #mon > #transport .gap { flex: 1; }
+body.nle #mon > #transport button.icon { width: 30px; height: 26px; border-color: transparent; background: transparent; border-radius: 3px; }
+body.nle #mon > #transport button.icon:hover { background: #343434; }
+body.nle #mon > #transport button.icon svg.i { width: 15px; height: 15px; }
+body.nle #mon > #transport #play { width: 40px; height: 28px; margin: 0 4px; background: #2f2f2f; border-color: #444; color: #fff; }
+body.nle #mon > #transport #play:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+body.nle #mon > #transport #play svg.i { width: 17px; height: 17px; }
+body.nle #mon > #transport #vol { width: 90px; }
+body.nle #vclock { font-variant-numeric: tabular-nums; }
+
+/* ---------- timeline frame: tools on the left, meters on the right ---------- */
+body.nle #tl { --tools: 34px; --meter: 50px; }
+body.nle #tlbar, body.nle #tlscroll { margin-left: var(--tools); margin-right: var(--meter); }
+body.nle #tlbar { border-right: 1px solid var(--line); }
+#nleTools { position: absolute; left: 0; top: 0; bottom: 24px; width: var(--tools); z-index: 8; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; padding: 6px 0; background: #232323; border-right: 1px solid var(--line); }
+#nleTools button { width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 3px; color: #b9b9b9; cursor: pointer; }
+#nleTools button svg.i { width: 15px; height: 15px; }
+#nleTools button:hover { background: #343434; color: #fff; }
+#nleTools button.on { background: #17324f; border-color: #24517f; color: var(--blue); }
+#nleTools button:disabled { opacity: .3; cursor: default; background: transparent; }
+#nleTools hr { width: 18px; border: 0; border-top: 1px solid #3a3a3a; margin: 3px 0; }
+
+#nleMeter { position: absolute; right: 0; top: 0; bottom: 24px; width: var(--meter); z-index: 8; display: flex; flex-direction: column;
+  padding: 10px 0 4px; background: #232323; border-left: 1px solid var(--line); }
+#nleMeter .bars { position: relative; flex: 1; min-height: 0; margin: 0 6px 0 20px; display: flex; gap: 3px; }
+#nleMeter .ch { position: relative; flex: 1; background: #111; box-shadow: inset 0 0 0 1px #000; overflow: hidden; }
+#nleMeter .ch i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: bottom; transform: scaleY(0);
+  background: linear-gradient(0deg, #2fbf62 0%, #2fbf62 62%, #e2c53a 80%, #e2c53a 92%, #e5484d 97%); }
+#nleMeter .ch u { position: absolute; left: 0; right: 0; height: 2px; bottom: 0; background: #e8e8e8; opacity: 0; }
+#nleMeter .scale { position: absolute; left: -20px; top: 0; bottom: 0; width: 18px; pointer-events: none; }
+#nleMeter .scale span { position: absolute; right: 2px; transform: translateY(-50%); font: 400 8.5px/1 var(--ui); color: #8a8a8a; font-variant-numeric: tabular-nums; }
+#nleMeter .lr { display: flex; gap: 3px; margin: 3px 6px 0 20px; font: 600 8.5px/1 var(--ui); color: #8a8a8a; }
+#nleMeter .lr span { flex: 1; text-align: center; }
+@media (max-width: 1000px) { body.nle #tl { --tools: 0px; --meter: 0px; } #nleTools, #nleMeter { display: none; } }
+
+/* ---------- ruler and playhead ---------- */
+body.nle #ruler { background: linear-gradient(180deg, #2b2b2b, #242424); }
+body.nle #ruler span b { font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+body.nle #head { border-left-color: #3ea0ff; box-shadow: 0 0 0 .5px rgba(62,160,255,.35); }
+
+/* ---------- track lanes ---------- */
+body.nle #layers { display: flex; flex-direction: column; }
+.lrow.nle-v { --row: 48px; }
+.lrow.nle-a { --row: 42px; }
+.lrow.nle-empty { --row: 26px; }
+.lrow.nle-empty .nle-badge { height: 17px; }
+.lrow.nle-v .lbars { background: #222325; border-bottom-color: #151515; }
+.lrow.nle-a .lbars { background: #1e2220; border-bottom-color: #141614; }
+.lrow.nle-split .lhead, .lrow.nle-split .lbars { border-bottom: 2px solid #0f0f0f; }
+.lrow.nle-v .lhead, .lrow.nle-a .lhead { gap: 8px; padding: 0 8px; background: #272727; border-bottom-color: #181818; cursor: default; }
+.lrow.nle-v:hover .lhead, .lrow.nle-a:hover .lhead { background: #2c2c2c; }
+.nle-badge { flex: none; width: 28px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 2px;
+  background: #383838; border: 1px solid #4a4a4a; color: #e2e2e2; font: 600 10.5px/1 var(--ui); letter-spacing: .3px; }
+.nle-badge.main { background: #1f4a78; border-color: #2d6cb0; color: #fff; }
+.nle-tname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d2d2d2; }
+.nle-tinfo { flex: none; color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.nle-toff { flex: none; font: 600 9px/1 var(--ui); letter-spacing: .6px; text-transform: uppercase; color: #111; background: #c9a13a; padding: 2px 4px; border-radius: 2px; }
+.nle-ticon { flex: none; display: flex; color: #8f8f8f; }
+.nle-ticon svg.i { width: 13px; height: 13px; }
+
+/* ---------- arranged-timeline clips ---------- */
+.seqclip.nle-clip { top: 3px; height: calc(var(--row) - 6px); padding: 0; border-radius: 3px; border: 1px solid rgba(0,0,0,.75);
+  background: color-mix(in srgb, var(--c) 30%, #141414); color: var(--k); cursor: pointer; font: 400 10.5px/1 var(--ui);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+.seqclip.nle-clip:hover { filter: brightness(1.12); }
+.seqclip.nle-clip:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.nle-lab { position: absolute; left: 0; right: 0; top: 0; height: 15px; padding: 0 5px; display: flex; align-items: center; gap: 5px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 100%, #fff 0%), color-mix(in srgb, var(--c) 84%, #000));
+  color: var(--k); white-space: nowrap; overflow: hidden; pointer-events: none; }
+.nle-lab b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.nle-lab em { font-style: normal; opacity: .75; flex: none; }
+.nle-strip { position: absolute; left: 0; right: 0; top: 15px; bottom: 0; display: flex; overflow: hidden; pointer-events: none; }
+.nle-strip i { flex: none; height: 100%; background: #171717 center / cover no-repeat; box-shadow: inset -1px 0 0 rgba(0,0,0,.45); }
+.nle-wave { position: absolute; left: 0; top: 15px; height: calc(100% - 15px); pointer-events: none; }
+
+/* ---------- beat-layout clips ---------- */
+body.nle .lrow.flat, body.nle .lrow[data-speech], body.nle .lrow[data-hero] { height: 50px; }
+body.nle .lrow.audio { height: 54px; }
+body.nle .clip, body.nle .line { border-radius: 3px; }
+.clip.nle-shot { background-color: #171717; background-repeat: repeat-x; background-size: auto 100%; background-position: left center;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.7), inset 0 -4px 0 var(--c); color: #fff; align-items: flex-start; padding-top: 3px; }
+.clip.nle-shot b { background: rgba(0,0,0,.62); padding: 1px 4px; border-radius: 2px; font-size: 10px; }
+.clip.nle-shot.sel { box-shadow: inset 0 0 0 2px #fff, inset 0 -4px 0 var(--c); }
+.clip.nle-shot.lift { box-shadow: 0 8px 22px rgba(0,0,0,.6), inset 0 0 0 2px #fff; }

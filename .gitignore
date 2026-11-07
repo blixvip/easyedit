@@ -8,3 +8,7 @@ models/
 *.log
 *.err
 footage/
+styles/*/reels/
+styles/*/work/
+styles/*/sheets/
+styles/*/*.log

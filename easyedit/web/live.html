@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>easyedit live preview</title>
+<style>
+@font-face { font-family: EECaption; src: url('fonts/Montserrat.ttf'); font-weight: 100 900; }
+@font-face { font-family: EEDisplay; src: url('fonts/Anton.ttf'); }
+@font-face { font-family: EESerif; font-style: italic; src: url('fonts/PlayfairDisplay-Italic.ttf'); font-weight: 400 900; }
+@font-face { font-family: EETrailer; src: url('fonts/Cinzel.ttf'); font-weight: 400 900; }
+@font-face { font-family: EEType; src: url('fonts/SpecialElite.ttf'); }
+@font-face { font-family: EEVhs; src: url('fonts/VT323.ttf'); }
+@font-face { font-family: EEScript; src: url('fonts/Caveat.ttf'); font-weight: 400 700; }
+@font-face { font-family: EEMarker; src: url('fonts/PermanentMarker.ttf'); }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#footage, #gl, #fx { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#fx { pointer-events: none; }
+#depth { position: absolute; left: 0; top: 0; width: 640px; height: 360px; opacity: 0; }
+#pool { position: absolute; left: -10000px; top: 0; width: 16px; height: 16px; overflow: hidden; }
+#pool video { width: 16px; height: 9px; }
+</style>
+</head>
+<body>
+<main id="stage">
+  <canvas id="footage" width="1920" height="1080"></canvas>
+  <canvas id="gl" width="1920" height="1080"></canvas>
+  <canvas id="fx" width="1920" height="1080"></canvas>
+</main>
+<div id="pool"></div>
+<script>
+// The editor's program monitor. It plays the sequence as it stands, straight from the source files:
+// the picture under the playhead is drawn into #footage each frame (its crop, filling 1920x1080 the way
+// the cut does) and the same film.js that renders the export paints the look, the moves and the captions.
+// After a render it can play the rendered cut instead, with its exact sound and depth map.
+(async () => {
+  const v = new URLSearchParams(location.search).get('v') || '0';
+  const load = src => new Promise((ok, bad) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = bad;
+    document.body.appendChild(s);
+  });
+  let live = null;
+  try { live = parent.easyeditLive && parent.easyeditLive(); } catch { /* opened on its own */ }
+  if (!live) { document.body.style.background = '#200'; return; }
+  let lastStatus = '';
+  function status(state, message = '', retry = false) {
+    const key = `${state}|${message}`;
+    if (key === lastStatus) return;
+    lastStatus = key;
+    try { parent.easyeditPreviewStatus?.({ state, message, retry }, live.session); } catch { /* opened alone */ }
+  }
+
+  const canvas = document.getElementById('footage'), g = canvas.getContext('2d', { alpha: false });
+  const pool = document.getElementById('pool');
+  // the rendered cut carries a depth map: film.js finds it by its id when it starts
+  if (live.built && live.built.depth) {
+    const d = document.createElement('video');
+    d.id = 'depth'; d.muted = true; d.playsInline = true; d.preload = 'auto'; d.src = live.built.depth;
+    document.getElementById('stage').appendChild(d);
+  }
+  window.EDIT = live.edit;
+  await load('film.js?v=' + v);
+  const E = window.EDIT, depth = document.getElementById('depth');
+
+  // ---------- the clock ----------
+  let playing = false, cur = 0, t0 = 0, wall0 = 0, drawn = -1, told = '', dirty = 2;
+  function poke() { dirty = 2; }
+
+  // ---------- the sequence ----------
+  let pieces = [], media = {}, sounds = [], master = 1;
+  const RAMPS = { in: u => 2.6 - 2.1 * u * u * (3 - 2 * u), out: u => 0.5 + 2.1 * u * u * (3 - 2 * u),
+                  hit: u => 0.45 + 1.95 * Math.pow(Math.abs(2 * u - 1), 1.5) };
+  const total = () => E.frames / E.fps;
+  // where in its source a clip is at time t, and how fast it plays there: the cut's own sums (sequence.times_of)
+  function mapOf(c) {
+    if (c._map) return c._map;
+    const fps = E.fps, a = Math.round(c.at * fps), n = Math.max(1, Math.max(a + 1, Math.round((c.at + c.dur) * fps)) - a), sp = c.speed || 1;
+    let v = null;
+    if (RAMPS[c.ramp]) { const [u0, u1] = c.rspan || [0, 1]; v = Array.from({ length: n }, (_, k) => RAMPS[c.ramp](u0 + (k + 0.5) / n * (u1 - u0)) * sp); }
+    else if (sp < 0.99) v = new Array(n).fill(sp);
+    let times = null;
+    if (v) { times = new Float64Array(n); let acc = 0; for (let k = 0; k < n; k++) { acc += v[k]; times[k] = (acc - v[k] / 2) / fps; } }
+    return (c._map = { a, n, v, times, sp });
+  }
+  function srcAt(c, t) {
+    const m = mapOf(c), f = t * E.fps - m.a;
+    if (!m.times) return c.in + (t - m.a / E.fps) * m.sp;
+    const k = Math.max(0, Math.min(m.n - 1, Math.floor(f)));
+    return c.in + m.times[k] + (f - k - 0.5) * m.v[k] / E.fps;
+  }
+  function rateAt(c, t) {
+    const m = mapOf(c);
+    if (!m.v) return m.sp;
+    return m.v[Math.max(0, Math.min(m.n - 1, Math.floor(t * E.fps - m.a)))];
+  }
+  const pieceAt = t => { const f = t * E.fps; return pieces.find(p => f >= p.start && f < p.end) || null; };
+  const boundedTime = (el, t) => Math.max(0, Number.isFinite(el.duration)
+    ? Math.min(t, Math.max(0, el.duration - 0.5 / E.fps)) : t);
+
+  // ---------- pictures: a few video elements per source, each already waiting where its piece starts ----------
+  const els = [];
+  function element(key, piece) {
+    let e = els.find(x => x.piece === piece);
+    if (e) return e;
+    e = els.find(x => x.key === key && !x.piece) || null;
+    if (!e) {
+      if (els.length >= 9) {   // the oldest free one is reused for another source
+        e = els.find(x => !x.piece);
+        if (!e) return null;
+      } else {
+        e = { el: document.createElement('video'), key: null, piece: null };
+        Object.assign(e.el, { muted: true, playsInline: true, preload: 'auto' });
+        for (const ev of ['loadeddata', 'seeked', 'canplay']) e.el.addEventListener(ev, poke);
+        const entry = e;
+        e.el.addEventListener('error', () => {
+          if (entry.piece === pieceAt(clock())) {
+            status('error', `Could not play ${media[entry.key]?.name || 'this source'}. Restore the file or replace the clip.`, true);
+          }
+          poke();
+        });
+        pool.appendChild(e.el);
+        els.push(e);
+      }
+      if (e.key !== key) { e.key = key; e.el.src = (media[key] || {}).video || ''; }
+    }
+    e.piece = piece;
+    return e;
+  }
+  function syncPictures(t, playing) {
+    const now = pieceAt(t), i = pieces.indexOf(now), want = new Set();
+    if (now) want.add(now);
+    for (let k = i + 1; k < pieces.length && k <= i + 3; k++) {   // the next pieces wait at their first frame
+      if ((pieces[k].start / E.fps) - t > 4) break;
+      want.add(pieces[k]);
+    }
+    for (const e of els) if (e.piece && !want.has(e.piece)) { e.piece = null; if (!e.el.paused) e.el.pause(); }
+    for (const p of want) {
+      if (!p.clip || !(media[p.clip.src] || {}).video) continue;
+      const e = element(p.clip.src, p);
+      if (!e) continue;
+      const el = e.el;
+      if (p === now) {
+        const target = boundedTime(el, srcAt(p.clip, t));
+        if (playing) {
+          el.playbackRate = Math.max(0.07, Math.min(16, rateAt(p.clip, t)));
+          if (el.paused) { el.currentTime = target; el.play().catch(() => {}); }
+          else if (Math.abs(el.currentTime - target) > 0.18) el.currentTime = target;
+        } else {
+          if (!el.paused) el.pause();
+          if (Math.abs(el.currentTime - target) > 0.5 / E.fps && !el.seeking) el.currentTime = target;
+        }
+      } else {
+        const target = boundedTime(el, srcAt(p.clip, p.start / E.fps + 0.001));
+        if (!el.paused) el.pause();
+        if (Math.abs(el.currentTime - target) > 0.04 && !el.seeking) el.currentTime = target;
+      }
+    }
+    return now;
+  }
+  // the piece under the playhead, cropped and filling the frame the way the cut fills it (top-anchored)
+  let shown = null;
+  function compose(piece) {
+    if (!piece || !piece.clip) {
+      g.fillStyle = '#000'; g.fillRect(0, 0, 1920, 1080); shown = null;
+      status(pieces.length ? 'ready' : 'empty', pieces.length ? '' : 'Add a video clip to the timeline.');
+      return;
+    }
+    const e = els.find(x => x.piece === piece), el = e && e.el;
+    if (!el || el.readyState < 2 || !el.videoWidth) {
+      if (shown !== piece) { g.fillStyle = '#000'; g.fillRect(0, 0, 1920, 1080); }
+      if (el?.error || !media[piece.clip.src]?.video) {
+        status('error', `Could not play ${media[piece.clip.src]?.name || 'this source'}. Restore the file or replace the clip.`, true);
+      }
+      return;   // waiting for the requested source frame
+    }
+    const m = media[piece.clip.src] || {}, [x0, y0, x1, y1] = m.crop || [0, 0, 1, 1];
+    const sw = (x1 - x0) * el.videoWidth, sh = (y1 - y0) * el.videoHeight;
+    const k = Math.max(1920 / sw, 1080 / sh), dw = sw * k, dh = sh * k;
+    g.drawImage(el, x0 * el.videoWidth, y0 * el.videoHeight, sw, sh, (1920 - dw) / 2, 0, dw, dh);
+    shown = piece;
+    status('ready');
+  }
+
+  // ---------- sound: every audio clip on its own element, the song ducked while anyone speaks ----------
+  const audioEls = new Map();   // by clip id and file: an edit that keeps a clip keeps its element and its buffer
+  const audioNodes = new Map();
+  let audioContext = null;
+  function audioGain(a) {
+    if (!audioContext) return null;
+    if (!audioNodes.has(a)) {
+      const source = audioContext.createMediaElementSource(a), gain = audioContext.createGain();
+      source.connect(gain); gain.connect(audioContext.destination);
+      audioNodes.set(a, { source, gain });
+    }
+    return audioNodes.get(a).gain;
+  }
+  const soundKey = s => `${s.id}|${s.src}`;
+  function syncSound(t, playing) {
+    const talking = sounds.some(s => s.kind === 'speech' && (s.gain ?? 1) > 0 && t >= s.at && t < s.at + s.dur);
+    for (const s of sounds) {
+      let a = audioEls.get(soundKey(s));
+      const on = playing && t >= s.at && t < s.at + s.dur;
+      if (!a && !on && !(t <= s.at && s.at < t + 1.5)) continue;
+      if (!a) {
+        a = document.createElement('audio');
+        a.preload = 'auto'; a.src = (media[s.src] || {}).audio || '';
+        pool.appendChild(a);
+        audioEls.set(soundKey(s), a);
+      }
+      if (!on) { if (!a.paused) a.pause(); continue; }
+      const target = Math.max(0, s.in + (t - s.at) * (s.speed || 1));
+      // Audio past the source ends in silence, matching the exported mix.
+      if (Number.isFinite(a.duration) && target >= a.duration) { a.pause(); continue; }
+      a.playbackRate = Math.max(0.1, Math.min(8, s.speed || 1));
+      const level = s.kind === 'music' && s.duck !== false && talking ? 0.15 : 1;
+      const volume = Math.max(0, Math.min(4, master * level * (s.gain ?? 1))), gain = audioGain(a);
+      if (gain) { a.volume = 1; gain.gain.value = volume; }
+      else a.volume = Math.min(1, volume);
+      if (a.paused) { a.currentTime = target; a.play().catch(() => {}); }
+      else if (Math.abs(a.currentTime - target) > 0.15) a.currentTime = target;
+    }
+  }
+  function setSounds(list) {
+    const keep = new Set(list.map(soundKey));
+    for (const [k, a] of audioEls) if (!keep.has(k)) {
+      a.pause(); a.removeAttribute('src'); a.load(); a.remove(); audioEls.delete(k);
+      const node = audioNodes.get(a);
+      if (node) { node.source.disconnect(); node.gain.disconnect(); audioNodes.delete(a); }
+    }
+    sounds = list;
+  }
+
+  function apply(next) {
+    media = next.media || {};
+    pieces = next.pieces || [];
+    for (const k of ['shots', 'captions', 'faces', 'beats', 'frames', 'montageStart', 'title', 'year']) if (next.edit[k] !== undefined) E[k] = next.edit[k];
+    for (const e of els) {
+      e.el.pause(); e.piece = null;
+      if (e.key && (media[e.key] || {}).video && e.el.src.indexOf((media[e.key] || {}).video) < 0) e.key = null;
+    }
+    setSounds(next.sounds || []);
+    cur = Math.max(0, Math.min(playing ? t0 + (performance.now() - wall0) / 1000 : cur, total() - 0.001));
+    if (playing) { t0 = cur; wall0 = performance.now(); }
+    poke();
+  }
+  apply(live);
+
+  if (document.fonts) document.fonts.addEventListener('loadingdone', poke);
+  if (depth) for (const ev of ['loadeddata', 'seeked']) depth.addEventListener(ev, poke);
+  const clock = () => playing ? t0 + (performance.now() - wall0) / 1000 : cur;
+  const tell = t => { try { parent.easyeditTick && parent.easyeditTick(t, playing); } catch { /* alone */ } };
+  function frame() {
+    let t = clock();
+    if (playing && t >= total() - 0.02) { api.pause(); t = cur = Math.max(0, total() - 0.02); }
+    const piece = syncPictures(t, playing);
+    syncSound(t, playing);
+    if (depth) {
+      if (playing && depth.paused) depth.play().catch(() => {});
+      if (!playing && !depth.paused) depth.pause();
+      if (Math.abs(depth.currentTime - t) > (playing ? 0.07 : 0.001)) depth.currentTime = t;
+    }
+    if (playing || dirty > 0 || t !== drawn) {
+      compose(piece);
+      window.drawFrame(t);
+      drawn = t;
+      if (dirty > 0) dirty--;
+    }
+    const now = `${t}|${playing}`;
+    if (playing || now !== told) { told = now; tell(t); }
+    requestAnimationFrame(frame);
+  }
+  const api = window.player = {
+    get total() { return total(); },
+    get time() { return clock(); },
+    get playing() { return playing; },
+    play() {
+      if (playing) return;
+      if (cur >= total() - 0.05) cur = 0;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!audioContext && AudioContext) audioContext = new AudioContext();
+        audioContext?.resume().catch(() => {});
+      } catch { /* HTML audio still plays if Web Audio is unavailable */ }
+      t0 = cur; wall0 = performance.now(); playing = true;
+      syncSound(cur, true);   // started inside the click, so the browser lets the sound play
+      syncPictures(cur, true);
+    },
+    pause() { if (!playing) return; cur = clock(); playing = false; syncSound(cur, false); poke(); },
+    seek(t) { cur = Math.max(0, Math.min(total() - 0.001, Number(t) || 0)); if (playing) { t0 = cur; wall0 = performance.now(); syncSound(cur, true); } poke(); },
+    volume(x) { master = Math.max(0, Math.min(1, Number(x) || 0)); },
+    redraw: poke,
+    // the whole edit, laid out again: clips, captions, title, effects. The look comes with a reload.
+    setLive(next) { apply(next); },
+    setCaptions(lines) { E.captions = lines; poke(); },
+    setTitle(text) { E.title = text; poke(); },
+    setShotOpts() { poke(); return true; },
+  };
+  requestAnimationFrame(frame);
+  try { parent.easyeditReady && parent.easyeditReady(api, live.session); } catch { /* alone */ }
+})().catch(error => {
+  try { parent.easyeditPreviewStatus?.({ state: 'error', message: error.message || 'Preview could not start.', retry: true }); } catch { /* alone */ }
+});
+</script>
+</body>
+</html>

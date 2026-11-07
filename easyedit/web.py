@@ -7,12 +7,14 @@ Standard library only - no Flask, no build step.
 from __future__ import annotations
 
 import json
+import math
 import mimetypes
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.error
@@ -54,7 +56,9 @@ def picture_bytes(raw: bytes, content_type: str) -> bytes:
 
 def safe_job(slug: str) -> Path | None:
     """A job directory inside jobs/, or None. Slugs come from the page and the URL."""
-    slug = (slug or "").strip()
+    if not isinstance(slug, str):
+        return None
+    slug = slug.strip()
     if not slug or len(slug) > 60 or not _SLUG.fullmatch(slug):
         return None
     root = JOBS.resolve()
@@ -84,6 +88,13 @@ STAGES = [
 _runs: dict[str, dict] = {}
 _lock = threading.Lock()
 _setup: dict = {"report": None, "checked": 0.0, "busy": False}
+
+
+class ApiError(ValueError):
+    def __init__(self, message: str, code: int = 400, **details):
+        super().__init__(message)
+        self.code = code
+        self.details = details
 
 
 def setup_report(force: bool = False) -> dict:
@@ -172,6 +183,22 @@ def progress_of(slug: str, log: Path) -> dict:
                 stage = f"rendering {done}/{total} frames"
     err = [l for l in text.splitlines() if "error" in l.lower() or "Traceback" in l]
     return {"stage": stage, "progress": round(pct, 3), "error": err[-1][:300] if err else None}
+
+
+def run_status(slug: str, log: Path) -> dict:
+    status = progress_of(slug, log)
+    run = _runs.get(slug)
+    code = run["proc"].poll() if run else None
+    status.update(running=bool(run and code is None), exitCode=code)
+    if run and code is not None:
+        run["fh"].close()
+        if run.get("stopped"):
+            status.update(stage="stopped", error="The run was stopped.")
+        elif code:
+            status.update(stage="failed", error=status["error"] or f"The run failed (exit code {code}). Open the log for details.")
+        else:
+            status.update(stage="done", progress=1.0, error=None)
+    return status
 
 
 def frames_done(slug: str) -> tuple[int, int]:
@@ -270,7 +297,9 @@ def job_info(job: Path) -> dict:
     elif cut:
         info["duration"] = round(_length(footage), 1)
     if running:  # a finished job shows its video, not a stale progress bar
-        info.update(progress_of(job.name, job / "run.log"))
+        info.update(run_status(job.name, job / "run.log"))
+    elif run and run["proc"].poll():
+        info["failed"] = run_status(job.name, job / "run.log")["error"]
     elif not ready and (job / "run.log").exists():  # it never got as far as the editor: say why
         last = progress_of(job.name, job / "run.log")
         if last["stage"] != "done":
@@ -278,20 +307,70 @@ def job_info(job: Path) -> dict:
     return info
 
 
+def job_row(job: Path) -> dict:
+    """job_info, but one project with a broken file cannot take the whole list down with it."""
+    try:
+        return job_info(job)
+    except Exception as e:
+        return {"slug": job.name, "title": job.name.replace("-", " ").title(), "year": None, "scene": "", "music": "",
+                "updated": job.stat().st_mtime, "running": False, "ready": False, "cut": False, "missing": False,
+                "sources": 0, "kind": "film", "cover": None, "video": None, "thumb": None, "folder": str(job),
+                "failed": f"One of its files could not be read ({e})"[:300]}
+
+
 def start_job(body: dict) -> dict:
-    movie = (body.get("movie") or "").strip()
+    body = dict(body)
+    movie = body.get("movie")
+    if not isinstance(movie, str):
+        raise ValueError("a movie name is required")
+    movie = movie.strip()
     if not movie:
         raise ValueError("a movie name is required")
+    montage = body.get("montage") or []
+    if not isinstance(montage, list) or any(not isinstance(m, str) for m in montage):
+        raise ValueError("montage must be a list of clip links or file paths")
+    for key in ("speech", "music"):
+        if body.get(key) is not None and not isinstance(body[key], str):
+            raise ValueError(f"{key} must be a clip link, file path, or search")
+    if body.get("fps") is not None:
+        if str(body["fps"]) not in ("24", "30", "60"):
+            raise ValueError("fps must be 24, 30, or 60")
+        body["fps"] = int(body["fps"])
+    if body.get("llm") is not None and body["llm"] not in ("auto", "claude", "codex", "none"):
+        raise ValueError("choose auto, claude, codex, or none for the writer")
+    for key in ("montage_length", "hero_length"):
+        if body.get(key) is not None:
+            try:
+                value = float(body[key])
+            except (TypeError, ValueError):
+                raise ValueError(f"{key} must be a positive number of seconds") from None
+            if isinstance(body[key], bool) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{key} must be a positive number of seconds")
     slug = slugify(movie)
+    resume = body.get("resume")
+    if resume is not None:
+        job = safe_job(resume)
+        if job is None or not job.is_dir():
+            raise ApiError("unknown edit", 404)
+        slug = job.name
+    if safe_job(slug) is None:
+        raise ValueError("choose a shorter movie name")
     with _lock:
         run = _runs.get(slug)
         if run and run["proc"].poll() is None:
             return {"slug": slug, "already": True}
-        argv = [sys.executable, "-u", "-m", "easyedit", movie]
+        job = safe_job(slug)
+        if job.is_dir() and any(job.iterdir()) and resume is None and body.get("fresh") is not True:
+            raise ApiError("That project already exists. Open it to edit or export.", 409, slug=slug, exists=True)
+        if resume is not None and (job / "sources.json").exists():
+            argv = editor.run_argv(job, "full")
+            _launch(slug, argv)
+            return {"slug": slug, "started": True}
+        argv = [sys.executable, "-u", "-m", "easyedit", slug if resume is not None else movie]
         for flag in ("speech", "music"):
             if body.get(flag):
                 argv += [f"--{flag}", str(body[flag])]
-        for m in body.get("montage") or []:
+        for m in montage:
             if m.strip():
                 argv += ["--montage", m.strip()]
         for flag, key in (("--fps", "fps"), ("--montage-length", "montage_length"),
@@ -308,16 +387,27 @@ def start_job(body: dict) -> dict:
 
 
 def _launch(slug: str, argv: list[str]) -> None:
-    job = JOBS / slug
+    job = safe_job(slug)
+    if job is None:
+        raise ValueError("unknown edit")
+    previous = _runs.get(slug)
+    if previous:
+        if previous["proc"].poll() is None:
+            raise ValueError("Wait for the current run to finish first.")
+        previous["fh"].close()
     job.mkdir(parents=True, exist_ok=True)
     fh = (job / "run.log").open("w", encoding="utf-8")
-    proc = subprocess.Popen(argv, cwd=ROOT, stdout=fh, stderr=subprocess.STDOUT,
-                            env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    try:
+        proc = subprocess.Popen(argv, cwd=ROOT, stdout=fh, stderr=subprocess.STDOUT,
+                                env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    except Exception:
+        fh.close()
+        raise
     _runs[slug] = {"proc": proc, "fh": fh, "started": time.time(), "argv": argv}
 
 
-CHOICES = ("plan.json", "quote.json", "curate.json", "settings.json")   # everything the editor saves
-_STAMP = re.compile(r"^\d{8}-\d{6}$")
+CHOICES = ("plan.json", "quote.json", "curate.json", "settings.json", "timeline.json")   # everything the editor saves
+_STAMP = re.compile(r"^\d{8}-\d{6}(?:-\d{4})?$")
 WHY = {"build": "Before Apply changes", "full": "Before an export", "draft": "Before a draft export",
        "refetch": "Before Better footage", "back": "Before going back to an earlier version"}
 
@@ -325,11 +415,19 @@ WHY = {"build": "Before Apply changes", "full": "Before an export", "draft": "Be
 def snapshot(job: Path, why: str) -> None:
     """Keep a copy of the edit's choices, so a run or a bad idea can be undone later. The last 20 are kept."""
     now = {f: (job / f).read_bytes() for f in CHOICES if (job / f).exists()}
-    past = sorted(p for p in (job / "history").glob("*") if _STAMP.match(p.name))
+    past = sorted(p for p in (job / "history").glob("*") if p.is_dir() and _STAMP.fullmatch(p.name))
     if past and {f: (past[-1] / f).read_bytes() for f in CHOICES if (past[-1] / f).exists()} == now:
         return   # nothing has changed since the last copy
-    dest = job / "history" / time.strftime("%Y%m%d-%H%M%S")
-    dest.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    dest = job / "history" / stamp
+    suffix = 0
+    while True:
+        try:
+            dest.mkdir(parents=True)
+            break
+        except FileExistsError:
+            suffix += 1
+            dest = job / "history" / f"{stamp}-{suffix:04d}"
     for f, data in now.items():
         (dest / f).write_bytes(data)
     (dest / "why.txt").write_text(why, encoding="utf-8")
@@ -339,28 +437,29 @@ def snapshot(job: Path, why: str) -> None:
 
 def history(job: Path) -> dict:
     rows = []
-    for p in sorted((p for p in (job / "history").glob("*") if _STAMP.match(p.name)), reverse=True):
+    for p in sorted((p for p in (job / "history").glob("*") if p.is_dir() and _STAMP.fullmatch(p.name)), reverse=True):
         why = (p / "why.txt").read_text(encoding="utf-8") if (p / "why.txt").exists() else ""
-        rows.append({"id": p.name, "when": time.mktime(time.strptime(p.name, "%Y%m%d-%H%M%S")), "why": why})
+        rows.append({"id": p.name, "when": time.mktime(time.strptime(p.name[:15], "%Y%m%d-%H%M%S")), "why": why})
     return {"versions": rows}
 
 
 def go_back(job: Path, stamp: str) -> dict:
     """Put an earlier version of the edit's choices back. The current ones are kept as a version first."""
     old = job / "history" / stamp
-    if not _STAMP.match(stamp) or not old.is_dir():
+    if not _STAMP.fullmatch(stamp) or not old.is_dir():
         raise ValueError("that version is no longer kept")
     with _lock:
         if _busy(job):
             raise ValueError("Wait for the current run to finish first.")
+        restored = {f: (old / f).read_bytes() for f in CHOICES if (old / f).exists()}
         snapshot(job, WHY["back"])
         speech = read_json(job / "sources.json").get("speech", [])
         for f in CHOICES:
-            if f == "quote.json" and (old / f).exists() and read_json(old / f).get("files") != speech:
+            if f == "quote.json" and f in restored and json.loads(restored[f]).get("files") != speech:
                 continue   # the speech clips have changed since: that quote points at clips that are not here now
-            if (old / f).exists():
-                shutil.copyfile(old / f, job / f)
-            elif f == "curate.json":
+            if f in restored:
+                (job / f).write_bytes(restored[f])
+            elif f in ("curate.json", "timeline.json"):   # that version had none: the beat cut again
                 (job / f).unlink(missing_ok=True)
     return _with_export(job, editor.state(job))
 
@@ -369,7 +468,7 @@ def _with_export(job: Path, state: dict) -> dict:
     """Say whether the exported video still shows the edit as it now stands."""
     out = output_of(job)
     if out:
-        newest = max((job / f).stat().st_mtime for f in CHOICES if (job / f).exists())
+        newest = max(((job / f).stat().st_mtime for f in (*CHOICES, "sources.json") if (job / f).exists()), default=0)
         state["built"]["exportOld"] = out.stat().st_mtime < newest - 1
     return state
 
@@ -389,11 +488,14 @@ UPLOADS = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v", ".mp3", ".m4a", ".wa
 def rebuild_job(job: Path, mode: str) -> dict:
     """Rebuild a job from the choices saved by the editor: cut only, draft render, or full render."""
     with _lock:
+        if mode not in ("build", "draft", "full", "refetch"):
+            raise ValueError(f"unknown mode: {mode}")
         run = _runs.get(job.name)
         if run and run["proc"].poll() is None:
             return {"slug": job.name, "already": True}
-        snapshot(job, WHY.get(mode, "Before a run"))
-        _launch(job.name, editor.run_argv(job, mode))
+        argv = editor.run_argv(job, mode)
+        snapshot(job, WHY[mode])
+        _launch(job.name, argv)
     return {"slug": job.name, "started": True}
 
 
@@ -422,8 +524,8 @@ def remove_clip(job: Path, path: str, role: str, delete: bool = False) -> dict:
 
 def preview_file(job: Path, name: str) -> Path | None:
     """The files the editor's live preview loads: the built footage plus the current film layer."""
-    if name == "player.html":
-        return WEB / "player.html"
+    if name in ("player.html", "live.html"):
+        return WEB / name
     if name == "film.js":
         return ROOT / "template" / "film.js"
     if name in ("edit.js", "footage.mp4", "depth.mp4"):
@@ -465,6 +567,7 @@ def stop_job(slug: str) -> bool:
         subprocess.run(["taskkill", "/T", "/F", "/PID", str(run["proc"].pid)], capture_output=True)
     else:
         run["proc"].terminate()
+    run["stopped"] = True
     return True
 
 
@@ -493,11 +596,18 @@ class Handler(BaseHTTPRequestHandler):
         size = path.stat().st_size
         rng = self.headers.get("Range")
         start, end = 0, size - 1
-        if rng and (m := re.match(r"bytes=(\d*)-(\d*)", rng)):
-            if m.group(1):
+        if rng:
+            m = re.fullmatch(r"bytes=(\d*)-(\d*)", rng.strip())
+            if m and m.group(1):
                 start = int(m.group(1))
-            if m.group(2):
-                end = min(int(m.group(2)), size - 1)
+                if m.group(2):
+                    end = min(int(m.group(2)), size - 1)
+            elif m and m.group(2) and int(m.group(2)) > 0:
+                start = max(0, size - int(m.group(2)))
+            else:
+                start = size
+            if start >= size or start > end:
+                return self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}", "Accept-Ranges": "bytes"})
         length = max(0, end - start + 1)
         self.send_response(206 if rng else 200)
         self.send_header("Content-Type", ctype)
@@ -567,15 +677,14 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/setup":
             return self._json(setup_report(force="refresh" in (urlparse(self.path).query or "")))
         if path == "/api/jobs":
-            return self._json({"jobs": [job_info(j) for j in job_dirs()]})
+            return self._json({"jobs": [job_row(j) for j in job_dirs()]})
         if path.startswith("/api/log/"):
             job = safe_job(path[len("/api/log/"):])
-            if not job:
+            if not job or not job.is_dir():
                 return self._json({"error": "unknown edit"}, 404)
             log = job / "run.log"
             text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
-            return self._json({"log": text[-8000:], **progress_of(job.name, log),
-                               "running": bool(_runs.get(job.name) and _runs[job.name]["proc"].poll() is None)})
+            return self._json({"log": text[-8000:], **run_status(job.name, log)})
         if path.startswith("/editor/"):
             job = safe_job(path[len("/editor/"):])
             if not job or not job.is_dir():
@@ -626,7 +735,10 @@ class Handler(BaseHTTPRequestHandler):
             if what == "history":
                 return self._json(history(job))
             if what == "wave":
-                return self._json(editor.wave(job))
+                return self._json(editor.wave(job, query.get("src", [""])[0] or None))
+            if what == "media":   # every source as the live preview plays it
+                from . import sequence
+                return self._json(sequence.media(job))
             if what == "clips":
                 return self._json(clips.library(job))
             if what == "anime/search":
@@ -640,11 +752,12 @@ class Handler(BaseHTTPRequestHandler):
             if what == "thumb":
                 found = editor.thumb(job, kind, index, float(query.get("t", ["0"])[0]))
             elif what == "source":
-                found = editor.source(job, kind, index)
+                found = editor.source(job, kind, index, audio=query.get("audio", [""])[0] == "1",
+                                      proxy=query.get("proxy", [""])[0] == "1")
             else:
                 found = None
-        except (ValueError, KeyError, OSError, subprocess.SubprocessError) as e:
-            return self._json({"error": str(e)}, 400)
+        except Exception as e:   # a project with a broken file says so, rather than dropping the connection
+            return self._json({"error": str(e) or e.__class__.__name__}, 400)
         if not found:
             return self._send(404, b"not found", "text/plain")
         return self._file(found)
@@ -682,26 +795,39 @@ class Handler(BaseHTTPRequestHandler):
         if not job or not job.is_dir():
             return self._json({"error": "unknown edit"}, 404)
         if what == "save":
-            return self._json(_with_export(job, editor.save(job, body)))
+            with _lock:
+                if _busy(job):
+                    return self._json({"error": "Wait for the current run to finish first."}, 409)
+                return self._json(_with_export(job, editor.save(job, body)))
         if what == "history/back":
             return self._json(go_back(job, str(body.get("id", ""))))
         if what == "clips/restore":
             return self._json(restore_footage(job))
         if what == "clips/discard":
             with _lock:
+                if _busy(job):
+                    return self._json({"error": "Wait for the current run to finish first."}, 409)
                 return self._json(clips.discard(job, str(body.get("path", ""))))
         if what == "requote":
             return self._json(editor.requote(job, int(body.get("clip", 0)), int(body["first"]), int(body["last"]),
                                              body.get("keep") or {}))
         if what == "run":
             return self._json(rebuild_job(job, str(body.get("mode", "build"))))
+        if what == "seq/auto":   # cut it to the beat again, as a sequence the page can undo
+            return self._json({"seq": editor.auto_seq(job, body)})
+        if what == "seq/music":
+            return self._json({"clip": editor.music_seq(job, body)})
         if what == "ask":
             return self._json(editor.ask(job, str(body.get("request", ""))))
         if what == "clips/add":
             return self._json(add_clip(job, body.get("item"), str(body.get("role", ""))))
         if what == "anime/set":   # link this edit to an anime (or to none), so the footage sites know what to look for
-            anime.link(job, anime.by_id(int(body["id"])) if body.get("id") else None)
-            return self._json(clips.library(job))
+            linked = anime.by_id(int(body["id"])) if body.get("id") else None
+            with _lock:
+                if _busy(job):
+                    return self._json({"error": "Wait for the current run to finish first."}, 409)
+                anime.link(job, linked)
+                return self._json(clips.library(job))
         if what == "clips/remove":
             return self._json(remove_clip(job, str(body.get("path", "")), str(body.get("role", "")),
                                           body.get("delete") is True))
@@ -710,7 +836,11 @@ class Handler(BaseHTTPRequestHandler):
     def _upload(self, slug: str, length: int):
         """Take a file dropped on the editor into the project's own folder."""
         job = safe_job(slug)
-        name = re.sub(r"[^\w .()\[\]-]+", "_", Path(unquote(parse_qs(urlparse(self.path).query).get("name", [""])[0])).name).strip()[:120]
+        name = re.sub(r"[^\w .()\[\]-]+", "_", Path(parse_qs(urlparse(self.path).query).get("name", [""])[0]).name).strip(" .")
+        if name:
+            name = Path(name).stem[:100] + Path(name).suffix.lower()
+        if Path(name).stem.upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}:
+            name = "_" + name
         problem = None
         if not job or not job.is_dir():
             problem = "unknown edit"
@@ -724,11 +854,12 @@ class Handler(BaseHTTPRequestHandler):
         if problem:
             self.close_connection = True   # the body was not read, so this connection cannot be reused
             return self._json({"error": problem}, 400)
-        dest = job / "downloads" / "uploads" / name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if not (dest.exists() and dest.stat().st_size == length):
-            part, left = dest.with_name(dest.name + ".part"), length
-            with part.open("wb") as fh:
+        folder = job / "downloads" / "uploads"
+        folder.mkdir(parents=True, exist_ok=True)
+        part = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=folder, prefix="upload-", suffix=".part", delete=False) as fh:
+                part, left = Path(fh.name), length
                 while left > 0:
                     chunk = self.rfile.read(min(1024 * 1024, left))
                     if not chunk:
@@ -736,19 +867,42 @@ class Handler(BaseHTTPRequestHandler):
                     fh.write(chunk)
                     left -= len(chunk)
             if left:
-                part.unlink(missing_ok=True)
                 return self._json({"error": "the file did not arrive whole; try again"}, 400)
-            part.replace(dest)
-        return self._json({"path": str(dest), "name": name})
+            with _lock:
+                dest = folder / name
+                if dest.exists():
+                    dest = folder / f"{Path(name).stem}-{part.stem.removeprefix('upload-')}{Path(name).suffix}"
+                part.replace(dest)
+            return self._json({"path": str(dest), "name": dest.name})
+        finally:
+            if part is not None:
+                part.unlink(missing_ok=True)
 
     def do_POST(self):
-        path = urlparse(self.path).path
-        length = int(self.headers.get("Content-Length") or 0)
+        path = unquote(urlparse(self.path).path)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length < 0:
+                raise ValueError
+        except ValueError:
+            self.close_connection = True
+            return self._json({"error": "invalid Content-Length"}, 400)
+        if self.headers.get("Transfer-Encoding"):
+            self.close_connection = True
+            return self._json({"error": "send a Content-Length with the upload"}, 400)
         if path.startswith("/api/edit/") and path.endswith("/clips/upload"):
-            return self._upload(path[len("/api/edit/"):-len("/clips/upload")], length)
+            try:
+                return self._upload(path[len("/api/edit/"):-len("/clips/upload")], length)
+            except (OSError, ValueError) as e:
+                self.close_connection = True
+                return self._json({"error": str(e)}, 400)
         if length > 26 * 1024 * 1024:
-            return self._json({"error": "picture is too large"}, 400)
+            self.close_connection = True
+            return self._json({"error": "request is too large"}, 413)
         raw = self.rfile.read(length) if length else b""
+        if len(raw) != length:
+            self.close_connection = True
+            return self._json({"error": "the request did not arrive whole; try again"}, 400)
         if path == "/api/design":
             try:
                 from .design import design_picture
@@ -758,8 +912,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, png, "image/png", {"Cache-Control": "no-store"})
         try:
             body = json.loads(raw or b"{}")
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return self._json({"error": "invalid JSON"}, 400)
+        if not isinstance(body, dict):
+            return self._json({"error": "JSON body must be an object"}, 400)
         try:
             if path.startswith("/api/edit/"):
                 return self._edit_post(path[len("/api/edit/"):], body)
@@ -779,18 +935,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": bool(job and job.is_dir())})
             if path == "/api/delete":
                 job = safe_job(body.get("slug", ""))
-                if job and job.is_dir():
-                    stop_job(job.name)
-                    run = _runs.pop(job.name, None)
-                    if run:
-                        try:
-                            run["proc"].wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            pass
-                        run["fh"].close()
-                    shutil.rmtree(job, ignore_errors=True)
-                    return self._json({"deleted": True})
+                with _lock:
+                    if job and job.is_dir():
+                        stop_job(job.name)
+                        run = _runs.get(job.name)
+                        if run:
+                            try:
+                                run["proc"].wait(timeout=5)
+                            except subprocess.TimeoutExpired:
+                                return self._json({"error": "The run is still stopping. Try deleting it again in a moment."}, 409)
+                            run["fh"].close()
+                        shutil.rmtree(job)
+                        _runs.pop(job.name, None)
+                        return self._json({"deleted": True})
                 return self._json({"deleted": False}, 400)
+        except ApiError as e:
+            return self._json({"error": str(e), **e.details}, e.code)
         except Exception as e:
             return self._json({"error": str(e)}, 400)
         return self._json({"error": "unknown endpoint"}, 404)

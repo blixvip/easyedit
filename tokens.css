@@ -1,0 +1,49 @@
+/* easyedit design tokens. The system is described in design.md. */
+:root {
+  /* paper: dark, warmed toward the wordmark's yellow (hue 88). Higher surfaces are lighter. */
+  --color-paper:      oklch(15% 0.008 88);
+  --color-paper-2:    oklch(19% 0.010 88);
+  --color-paper-3:    oklch(23.5% 0.011 88);
+  --color-paper-4:    oklch(29% 0.012 88);
+  --color-rule:       oklch(34% 0.010 88);
+  --color-neutral:    oklch(60% 0.010 88);
+  --color-muted:      oklch(75% 0.009 88);
+  --color-ink:        oklch(95% 0.008 92);
+  /* one accent: the easyedit yellow. Kept to small surfaces. */
+  --color-accent:     oklch(89% 0.125 96);
+  --color-accent-ink: oklch(22% 0.035 92);
+  --color-focus:      oklch(86% 0.15 92);
+  --color-bloom:      oklch(60% 0.11 80 / 0.16);
+  --color-bloom-2:    oklch(50% 0.09 40 / 0.12);
+  --color-glow:       oklch(89% 0.125 96 / 0.16);
+  --color-shade:      oklch(8% 0.01 88 / 0.6);
+  --color-scrim:      oklch(10% 0.01 88 / 0.72);
+  --color-good:       oklch(80% 0.14 150);
+  --color-warn:       oklch(82% 0.13 70);
+  --color-bad:        oklch(70% 0.17 25);
+  --color-good-wash:  oklch(80% 0.14 150 / 0.14);
+  --color-warn-wash:  oklch(82% 0.13 70 / 0.14);
+  --color-bad-wash:   oklch(70% 0.17 25 / 0.16);
+  --color-ink-wash:   oklch(95% 0.008 92 / 0.07);
+  --color-ink-wash-2: oklch(95% 0.008 92 / 0.13);
+
+  --font-display: "Anton", "Haettenschweiler", "Arial Narrow Bold", sans-serif;
+  --font-body:    "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-label:   "Geist Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+  --space-3xs: 0.25rem; --space-2xs: 0.5rem; --space-xs: 0.75rem; --space-sm: 1rem;
+  --space-md: 1.5rem;   --space-lg: 2rem;    --space-xl: 3rem;    --space-2xl: 4.5rem;
+
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.25rem;
+  --text-xl: 1.75rem; --text-2xl: 2.5rem;
+  --text-display: clamp(2.75rem, 4.2vw + 1rem, 5rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-short: 180ms; --dur-mid: 320ms;
+  --radius-card: 10px; --radius-input: 8px; --radius-chip: 6px; --radius-pill: 999px;
+  --rule-focus: 2px solid var(--color-focus);
+  --shadow-lift: 0 22px 48px -18px var(--color-shade), 0 0 0 1px var(--color-ink-wash);
+  --shadow-glow: 0 26px 60px -22px var(--color-glow), 0 22px 48px -18px var(--color-shade);
+}

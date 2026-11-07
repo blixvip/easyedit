@@ -188,6 +188,41 @@ def _tighten(words: list[dict], s: int, e: int) -> tuple[int, int]:
     return best
 
 
+WHOLE_PROMPT = """This is a spoken passage (voice-over or dialogue) that will be captioned word by word.
+Pick the words to emphasize, about one in four: the ones a viewer should feel land.
+
+{text}
+
+Reply with JSON: {{"emphasis": [["word", "role"], ...]}} where role is one of positive, negative, gold, cool
+(positive = wins/love/hope, negative = pain/loss/danger, gold = money/power/the big claim, cool = names/places/objects)."""
+
+
+def whole(words: list[dict], plan: dict, provider: str, clip: int = 0) -> dict:
+    """Caption a whole narration or clip, not a picked passage: every word, in lines, with emphasis."""
+    caption_words = [{"text": _clean(w["text"]), "start": w["start"], "end": w["end"], "role": None}
+                     for w in words]
+    caption_words = [w for w in caption_words if w["text"]]
+    if not caption_words:
+        raise RuntimeError("no speech to caption")
+    text = " ".join(w["text"].lower() for w in caption_words)
+    emphasis, source = {}, "heuristic"
+    reply = ask_json(WHOLE_PROMPT.format(text=text[:4000]), SYSTEM, provider) if provider != "none" else None
+    if isinstance(reply, dict):
+        emphasis = _emphasis_from_pairs(caption_words, 0, len(caption_words) - 1, reply.get("emphasis"))
+        source = "llm" if emphasis else source
+    if not emphasis:
+        emphasis = _auto_emphasis(caption_words)
+    for i, w in enumerate(caption_words):
+        w["role"] = emphasis.get(i)
+    groups = lines(caption_words)
+    result = {"clip": clip, "source": source, "reason": "whole passage captioned",
+              "start": caption_words[0]["start"], "end": caption_words[-1]["end"],
+              "lines": [[caption_words[i] for i in g] for g in groups]}
+    log(f"quote (whole, {source} emphasis): clip {clip}, {result['start']:.2f}-{result['end']:.2f}s, "
+        f"{len(caption_words)} words in {len(groups)} lines")
+    return result
+
+
 def choose(clips: list[list[dict]], plan: dict, provider: str) -> dict:
     cands = _candidates(clips)
     pick, emphasis_pairs, source, reason = None, None, "heuristic", ""

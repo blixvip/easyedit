@@ -22,6 +22,15 @@ from .util import CACHE, log, probe
 MODEL_URL = "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx"
 IN_W, IN_H = 518, 294      # multiples of the model's 14 px patch, close to 16:9
 OUT_W, OUT_H = 640, 360
+
+
+def _sizes(width: int, height: int) -> tuple[int, int, int, int]:
+    """Model input (multiples of 14 px) and depth map size for a canvas of this shape."""
+    if height > width:
+        return 294, 518, width // 3, height // 3
+    if height == width:
+        return 406, 406, width // 3, height // 3
+    return 518, 294, width // 3, height // 3
 KEY_FPS = 12               # depth is read this often and eased in between; never across a cut
 GPU_RUNTIME = CACHE / "ort-dml"
 
@@ -80,6 +89,7 @@ def build(job: Path) -> Path:
     footage = render / "footage.mp4"
     edit = json.loads((render / "edit.js").read_text(encoding="utf-8").removeprefix("window.EDIT=").rstrip().rstrip(";"))
     fps, total = edit["fps"], edit["frames"]
+    IN_W, IN_H, OUT_W, OUT_H = _sizes(int(edit.get("width") or 1920), int(edit.get("height") or 1080))
     # never ease depth across a cut: the speech and every shot are read on their own
     segments = [(0, edit["montageStart"])] + [(s["start"], s["end"]) for s in edit["shots"]]
     step = fps / KEY_FPS

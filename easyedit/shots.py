@@ -13,12 +13,13 @@ HEAD_SKIP, TAIL_SKIP = 6.0, 12.0  # channel intros / end screens
 CACHE_VERSION = 2  # bump when the shot features/filters change
 
 
-def _cuts(diffs: np.ndarray) -> list[int]:
+def _cuts(diffs: np.ndarray, min_gap: int = 4) -> list[int]:
+    """Indices where the thumbnail difference spikes: hard cuts. `min_gap` samples between cuts."""
     cuts = []
     for i, d in enumerate(diffs):
         lo, hi = max(0, i - 6), min(len(diffs), i + 7)
         local = np.median(diffs[lo:hi])
-        if d > 22 and d > 3.2 * max(local, 2.0) and (not cuts or i - cuts[-1] > 4):
+        if d > 22 and d > 3.2 * max(local, 2.0) and (not cuts or i - cuts[-1] > min_gap):
             cuts.append(i)
     return cuts
 
@@ -173,7 +174,9 @@ def select(pool: list[dict], durations: list[float], hero_len: float) -> tuple[l
     for s in pool:
         if len(chosen) >= need * 2:
             break
-        if any(s is t or _similar(s, t) for t in taken):
+        if any(s is t for t in taken):
+            continue
+        if s.get("pin") is None and any(_similar(s, t) for t in taken):   # a pinned shot was chosen on purpose
             continue
         chosen.append(s)
         taken.append(s)
@@ -183,9 +186,13 @@ def select(pool: list[dict], durations: list[float], hero_len: float) -> tuple[l
     # pinned shots (curate.json) keep their hand-picked order
     picks = sorted(chosen[:need], key=lambda s: (s.get("pin", 1e9), s["src"], s["start"]))
     spare = chosen[need:]
+    order = laps(len(picks), len(durations))
     slots: list[dict] = []
     for i, d in enumerate(durations):
-        shot = picks[i % len(picks)] if picks else None
+        lap, k = order[i] if order else (0, 0)
+        shot = picks[k] if picks else None
+        if shot and lap:   # a shot seen before: marked, so the cut shows another moment of it
+            shot = {**shot, "lap": lap}
         if shot and shot["end"] - shot["start"] < d:
             fit = next((s for s in spare if s["end"] - s["start"] >= d), None)
             if fit:
@@ -193,3 +200,23 @@ def select(pool: list[dict], durations: list[float], hero_len: float) -> tuple[l
                 shot = fit
         slots.append(shot)
     return slots, hero
+
+
+def laps(n: int, need: int) -> list[tuple[int, int]]:
+    """(lap, index) for each of `need` slots filled from `n` shots in story order. With too few shots
+    the montage goes round again, but each time in a new order that gives every shot new neighbours
+    and never puts a shot straight after itself, so a repeat does not replay the same sequence."""
+    if not n:
+        return []
+    out = [(0, k) for k in range(min(n, need))]
+    steps = [s for s in range(2, n) if np.gcd(s, n) == 1] or [1]
+    lap = 1
+    while len(out) < need:
+        step = steps[(lap - 1) % len(steps)]
+        last = out[-1][1]
+        start = (lap * (n // 2 + 1)) % n
+        if n > 1 and start == last:
+            start = (start + 1) % n
+        out += [(lap, (start + j * step) % n) for j in range(n)][: need - len(out)]
+        lap += 1
+    return out

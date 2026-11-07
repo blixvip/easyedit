@@ -7,6 +7,7 @@ lengths and frame rate, then asks the pipeline to rebuild.
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import subprocess
 import sys
@@ -19,7 +20,12 @@ GRADES = ("neutral", "cinematic", "teal-orange", "warm", "cool", "vivid", "anime
           "blood", "ice")
 ROLES = ("positive", "negative", "gold", "cool")
 DEFAULTS = {"fps": 60, "montage_length": 21.0, "hero_length": 3.4, "cut_rate": "normal", "depth": False,
-            "velocity": True, "sfx": 0.7}
+            "velocity": True, "sfx": 0.7,
+            # own-footage reels: the canvas, how pictures fit it, the creator profile, the caption mode
+            "aspect": "16:9", "fit": "cover", "style": None, "captions": "auto"}
+ASPECTS = ("16:9", "9:16", "1:1", "4:5")
+FITS = ("cover", "box")
+CAPTION_MODES = ("auto", "whole", "pick", "none")
 RAMPS = ("in", "out", "hit", "none")
 CUT_RATES = ("slow", "normal", "fast")
 MOVES = ("punch", "whip", "whip-down", "slide", "slide-left", "slide-right", "slide-up", "slide-down", "spin",
@@ -41,7 +47,7 @@ LOOK = {"grain": (0.05, 0.0, 0.25), "vignette": (0.42, 0.0, 0.9), "bars": (0.0, 
         "capTrack": (2.0, 0.0, 40.0), "capDX": (0.0, -300.0, 300.0), "capDY": (40.0, -300.0, 300.0),
         "capFromScale": (1.0, 0.2, 3.0), "capRot": (0.0, -90.0, 90.0)}
 CAP_FONTS = ("caption", "display")
-TF_LIMITS = {"x": (-1920, 1920), "y": (-1080, 1080), "s": (10, 400), "r": (-180, 180), "o": (0, 100)}
+TF_LIMITS = {"x": (-1920, 1920), "y": (-1920, 1920), "s": (10, 400), "r": (-180, 180), "o": (0, 100)}
 # After Effects-style text animations; they drive the signature text styles
 CAP_MOTIONS = ("ease-up", "ease-down", "blur-up", "blur-down", "pop-up", "pop-down", "bounce-up", "bounce-down",
                "wobble-up", "wobble-down", "slide-up", "slide-down", "random-up", "random-down", "snappy-up",
@@ -119,6 +125,16 @@ def _clean_settings(raw: dict) -> dict:
             out["sfx"] = round(min(1.5, max(0.0, float(raw["sfx"]))), 2)
     except (TypeError, ValueError):
         pass
+    if raw.get("aspect") in ASPECTS:
+        out["aspect"] = raw["aspect"]
+    if raw.get("fit") in FITS:
+        out["fit"] = raw["fit"]
+    if raw.get("captions") in CAPTION_MODES:
+        out["captions"] = raw["captions"]
+    if isinstance(raw.get("style"), str) and 0 < len(raw["style"]) <= 200:
+        out["style"] = raw["style"]
+    elif raw.get("style") is None and "style" in raw:
+        out["style"] = None
     return out
 
 
@@ -238,7 +254,102 @@ def _project(inp: dict, s: dict) -> dict:
                  "hero": True})
     return {"fps": fps, "frames": tl["total_f"], "speechFrames": tl["speech_f"],
             "speechStart": round(tl["speech_start"], 3), "musicStart": round(tl["music_start"], 3),
-            "beats": [round(tl["M"] + b, 3) for b in tl["beat_marks"]], "shots": cuts}
+            "beats": [round(tl["M"] + b, 3) for b in tl["beat_marks"]], "shots": cuts,
+            "repeats": sum(1 for x in slots if x.get("lap"))}   # cuts that show a shot a second time
+
+
+def _sequence_project(inp: dict, seq: dict, fps: int) -> dict:
+    """The saved sequence's real visible cut, for the editor's overview and playback clock."""
+    from . import sequence
+    pieces, end = sequence.flatten(seq, fps)
+    speech_end = 0
+    speech_start = 0.0
+    for p in pieces:
+        c = p["clip"]
+        if not c or c["kind"] != "speech" or p["start"] != speech_end:
+            break
+        if speech_end == 0:
+            speech_start = c["in"]
+        speech_end = p["end"]
+    cuts = []
+    for p in pieces:
+        if p["end"] <= speech_end:
+            continue
+        c = p["clip"]
+        cut = {"id": (c.get("shot") or c["id"]) if c else f"gap-{p['start']}",
+               "start": p["start"], "end": p["end"]}
+        if c and c["kind"] == "hero":
+            cut["hero"] = True
+        if not c:
+            cut["gap"] = True
+        cuts.append(cut)
+    off = set(seq.get("off") or [])
+    song = next((c for ti, track in enumerate(seq["audio"]) if f"A{ti + 1}" not in off
+                 for c in track if c["kind"] == "music" and not c.get("off") and c.get("gain", 1) > 0), None)
+    music_start = song["in"] - song["at"] * song.get("speed", 1) if song else 0.0
+    beats = []
+    if song:
+        speed = song.get("speed", 1)
+        beats = [round(song["at"] + (t - song["in"]) / speed, 3) for t in inp["beats"].get("beats", [])
+                 if song["in"] <= t <= song["in"] + song["dur"] * speed
+                 and song["at"] + (t - song["in"]) / speed <= end / fps]
+    return {"fps": fps, "frames": end, "speechFrames": speech_end, "speechStart": speech_start,
+            "musicStart": round(music_start, 3), "beats": beats, "shots": cuts, "sequence": True, "repeats": 0}
+
+
+def _faces(job: Path, q: dict, src: dict) -> dict:
+    """Where the face is in each speech source, by the source's own time, from the last cut: the live
+    preview follows it wherever the speech now sits."""
+    built = built_edit(job)
+    if not built:
+        return {}
+    if built.get("faceSrc"):
+        return built["faceSrc"]
+    from .assemble import LEAD
+    try:   # an older cut: the speech started the edit, LEAD seconds before the quote
+        name = Path(src["speech"][q.get("clip", 0)]).name
+        start = max(0.0, q["start"] - LEAD)
+        return {f"speech:{name}": [[round(f[0] + start, 2), *f[1:]] for f in built.get("faces") or []]}
+    except (IndexError, KeyError, TypeError):
+        return {}
+
+
+def auto_seq(job: Path, body: dict) -> dict:
+    """The beat cut for these settings and shot choices, as a fresh sequence (the page has not saved
+    them yet). Hand edits to the layout are replaced; the page keeps them in its undo."""
+    from . import sequence
+    inp = _inputs(job)
+    s = {**settings(job), **_clean_settings(body.get("settings") or {})}
+    if isinstance(body.get("curation"), dict):
+        c = body["curation"]
+        known = set(_bin_ids(inp))
+        cur = {"pin": [i for i in c.get("pin") or [] if i in known], "exclude": [i for i in c.get("exclude") or [] if i in known]}
+        if c.get("hero") in known:
+            cur["hero"] = c["hero"]
+        inp["curation"] = {k: v for k, v in cur.items() if v}
+    seq = sequence.generate(inp, s)
+    if isinstance(body.get("keep"), dict):   # what a beat cut does not make stays: overlay tracks, extra audio
+        old = sequence.clean(job, body["keep"])
+        seq["video"] = seq["video"][:1] + old["video"][1:]
+        seq["audio"] = seq["audio"][:2] + old["audio"][2:]
+        seq["off"] = old.get("off", [])
+        looks = {c["shot"]: c["opts"] for c in old["video"][0] if c.get("shot") and c.get("opts")}
+        for c in seq["video"][0]:   # a shot keeps the effects it had wherever the new cut puts it
+            if not c.get("opts") and c.get("shot") in looks:
+                c["opts"] = looks[c["shot"]]
+    return seq
+
+
+def _bin_ids(inp: dict) -> list[str]:
+    from . import shots
+    return [shots.shot_id(inp["analyses"], x) for x in shots.rank(inp["analyses"])]
+
+
+def music_seq(job: Path, body: dict) -> dict:
+    """The song's clip, laid so its drop lands where the shots start."""
+    from . import sequence
+    s = settings(job)
+    return sequence.music_clip(job, sequence.clean(job, body.get("seq") or {}), s["montage_length"], s["hero_length"])
 
 
 def state(job: Path) -> dict:
@@ -263,10 +374,23 @@ def state(job: Path) -> dict:
         clips.append({"name": Path(f).name,
                       "words": [{"text": w["text"], "start": w["start"], "end": w["end"]}
                                 for w in read_json(words)] if words.exists() else []})
+    from . import sequence
+    seq = sequence.load(job)
+    saved = seq is not None
+    timeline = _sequence_project(inp, seq, s["fps"]) if saved else _project(inp, s)
+    if not saved and not timeline.get("error"):
+        try:
+            seq = sequence.generate(inp, s)
+        except (IndexError, ValueError):
+            seq = None
     # a draft export cuts the same edit at 30 fps; that footage still matches these choices
-    keys = {assemble.build_key(q, plan, inp["music"], fps, s["montage_length"], s["hero_length"],
-                               inp["analyses"], cur, s["cut_rate"], s["velocity"], s["sfx"])
-            for fps in (s["fps"], 30)}
+    if saved:
+        keys = {sequence.key(seq, q, plan, fps, s["sfx"], inp["analyses"]) for fps in (s["fps"], 30)}
+    else:
+        keys = {assemble.build_key(q, plan, inp["music"], fps, s["montage_length"], s["hero_length"],
+                                   inp["analyses"], cur, s["cut_rate"], s["velocity"], s["sfx"],
+                                   bool(timeline.get("repeats")))
+                for fps in (s["fps"], 30)}
     key_file, footage = job / "work" / "build.key", job / "render" / "footage.mp4"
     has_build = footage.exists() and (job / "render" / "edit.js").exists()
     from . import depth as depth_maps
@@ -284,8 +408,12 @@ def state(job: Path) -> dict:
         "sources": {k: [Path(f).name for f in src[k]] for k in ("speech", "montage", "music")},
         "curation": {"pin": pins, "exclude": list(cur.get("exclude", [])), "hero": cur.get("hero"),
                      "shots": cur.get("shots") or {}, "cuts": list(cur.get("cuts") or [])},
-        "timeline": _project(inp, s),
-        "music": {"bpm": inp["beats"].get("bpm")},
+        "timeline": timeline,
+        "seq": seq, "seqSaved": saved,
+        "sequenceCaptions": sequence.captions(seq, q, f"speech:{Path(src['speech'][q.get('clip', 0)]).name}") if saved else None,
+        "music": {"bpm": inp["beats"].get("bpm"), "beats": [round(b, 3) for b in inp["beats"].get("beats", [])],
+                  "key": f"music:{inp['music'].name}"},
+        "faces": _faces(job, q, src),
         "built": {"exists": has_build,
                   "missing": not all(Path(f).exists() for k in ("speech", "montage", "music") for f in src[k]),
                   "fresh": has_build and key_file.exists() and key_file.read_text() in keys
@@ -297,14 +425,25 @@ def state(job: Path) -> dict:
 
 
 def _clean_lines(raw) -> list[list[dict]]:
+    if not isinstance(raw, list):
+        raise ValueError("captions must be a list of lines")
     lines = []
-    for line in raw or []:
+    for line in raw:
+        if not isinstance(line, list):
+            raise ValueError("each caption line must be a list of words")
         words = []
-        for w in line or []:
+        for w in line:
+            if not isinstance(w, dict):
+                raise ValueError("each caption word needs text and times")
             text = str(w.get("text", "")).strip()[:40]
             if not text:
                 continue
-            start, end = float(w["start"]), float(w["end"])
+            try:
+                start, end = float(w["start"]), float(w["end"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("caption words need valid start and end times") from None
+            if not math.isfinite(start) or not math.isfinite(end) or min(start, end) < 0:
+                raise ValueError("caption times must be finite and at least zero")
             words.append({"text": text, "start": start, "end": max(start, end),
                           "role": w.get("role") if w.get("role") in ROLES else None})
         if words:
@@ -316,7 +455,10 @@ def _clean_lines(raw) -> list[list[dict]]:
 
 def save(job: Path, body: dict) -> dict:
     """Write the editor's choices back to the job's own files."""
+    if not isinstance(body, dict):
+        raise ValueError("editor choices must be an object")
     inp = _inputs(job)
+    pending = {}
     if isinstance(body.get("plan"), dict):
         plan, p = inp["plan"], body["plan"]
         title = str(p.get("title") or "").strip()[:80]
@@ -333,7 +475,7 @@ def save(job: Path, body: dict) -> dict:
                 plan["look"] = look
             else:
                 plan.pop("look", None)
-        write_json(job / "plan.json", plan)
+        pending["plan.json"] = plan
     if isinstance(body.get("quote"), dict):
         q = read_json(job / "quote.json")  # keeps "files": the pipeline drops a quote without it
         lines = _clean_lines(body["quote"].get("lines"))
@@ -341,10 +483,10 @@ def save(job: Path, body: dict) -> dict:
         if not isinstance(clip, int) or not 0 <= clip < len(inp["sources"]["speech"]):
             raise ValueError("unknown speech clip")
         q.update(clip=clip, lines=lines, start=lines[0][0]["start"], end=lines[-1][-1]["end"])
-        write_json(job / "quote.json", q)
+        pending["quote.json"] = q
     if isinstance(body.get("curation"), dict):
         c = body["curation"]
-        known = {b["id"] for b in state(job)["shots"]}
+        known = set(_bin_ids(inp))
         cur = {}
         drop = [i for i in dict.fromkeys(c.get("exclude") or []) if i in known]
         pin = [i for i in dict.fromkeys(c.get("pin") or []) if i in known and i not in drop]
@@ -363,13 +505,73 @@ def save(job: Path, body: dict) -> dict:
             cuts = []
         if cuts:
             cur["cuts"] = cuts
-        if cur:
-            write_json(job / "curate.json", cur)
-        else:
-            (job / "curate.json").unlink(missing_ok=True)
+        pending["curate.json"] = cur or None
     if isinstance(body.get("settings"), dict):
-        write_json(job / "settings.json", {**settings(job), **_clean_settings(body["settings"])})
+        pending["settings.json"] = {**settings(job), **_clean_settings(body["settings"])}
+    if isinstance(body.get("seq"), dict):   # the layout, clip by clip: from now on an export cuts exactly this
+        from . import sequence
+        pending[sequence.FILE] = sequence.clean(job, body["seq"])
+    elif "seq" in body and body["seq"] is None:
+        from . import sequence
+        saved = job / sequence.FILE
+        if saved.exists():
+            pending["timeline.before-beat.json"] = read_json(saved)
+            pending[sequence.FILE] = None
+    else:
+        _preserve_sequence(job, inp, pending)
+    # Validate every section first: rejected captions or a bad sequence must not save half an edit.
+    for name, value in pending.items():
+        if value is None:
+            (job / name).unlink(missing_ok=True)
+        else:
+            write_json(job / name, value)
     return state(job)
+
+
+def _preserve_sequence(job: Path, inp: dict, pending: dict) -> None:
+    """Legacy controls may style a custom sequence; replacing its layout must be explicit."""
+    from . import sequence
+    seq = sequence.load(job)
+    if seq is None:
+        return
+    before = settings(job)
+    after = pending.get("settings.json", before)
+    changed = any(before[k] != after[k] for k in ("montage_length", "hero_length", "cut_rate", "velocity"))
+    q = pending.get("quote.json", inp["quote"])
+    changed |= q.get("clip", 0) != inp["quote"].get("clip", 0)
+    old = inp["curation"] or {}
+    new = pending.get("curate.json", old) or {}
+    changed |= any((old.get(k) or None) != (new.get(k) or None) for k in ("pin", "exclude", "hero", "cuts"))
+    old_opts, new_opts = old.get("shots") or {}, new.get("shots") or {}
+    timing = ("speed", "ramp", "slip")
+    for sid in old_opts.keys() | new_opts.keys():
+        a, b = old_opts.get(sid, {}), new_opts.get(sid, {})
+        changed |= any(a.get(k) != b.get(k) for k in timing)
+    if changed:
+        raise ValueError("This edit has a custom sequence. Choose Use beat layout before changing its shot order or timing.")
+    visual_changes = {}
+    for sid in old_opts.keys() | new_opts.keys():
+        a, b = old_opts.get(sid, {}), new_opts.get(sid, {})
+        visual_changes[sid] = {k: b.get(k) for k in a.keys() | b.keys() if k not in timing and a.get(k) != b.get(k)}
+    updated = False
+    for track in seq["video"]:
+        for c in track:
+            delta = visual_changes.get(c.get("shot"), {})
+            if not delta:
+                continue
+            opts = dict(c.get("opts") or {})
+            for k, v in delta.items():
+                if v is None:
+                    opts.pop(k, None)
+                else:
+                    opts[k] = v
+            if opts:
+                c["opts"] = opts
+            else:
+                c.pop("opts", None)
+            updated = True
+    if updated:
+        pending[sequence.FILE] = seq
 
 
 def requote(job: Path, clip: int, first: int, last: int, keep: dict) -> dict:
@@ -411,11 +613,26 @@ def run_argv(job: Path, mode: str) -> list[str]:
             argv += [f"--{flag}", specs[flag]]
     for m in specs.get("montage") or []:
         argv += ["--montage", m]
+    if specs.get("footage"):   # an own-footage reel: its clips, canvas, profile and caption mode
+        argv += ["--footage", *specs["footage"], "--aspect", s["aspect"], "--fit", s["fit"],
+                 "--captions", s["captions"]]
+        if s.get("style"):
+            argv += ["--style", s["style"]]
+        if specs.get("template"):
+            argv += ["--template", specs["template"]]
+        if specs.get("cards"):
+            argv += ["--cards", *specs["cards"]]
+        if specs.get("cta"):
+            argv += ["--cta", specs["cta"]]
+    elif s["aspect"] != "16:9" or s["fit"] != "cover":
+        argv += ["--aspect", s["aspect"], "--fit", s["fit"]]
     if s["depth"]:
         argv.append("--depth")
     if mode == "refetch":  # look for sharper footage, then cut from it
         argv = [a for a in argv if a not in ("--speech", "--music", "--montage") and a not in
                 [specs.get("speech"), specs.get("music"), *(specs.get("montage") or [])]]
+        if specs.get("footage"):
+            argv = [a for a in argv if a != "--footage" and a not in specs["footage"]]
         argv += ["--refetch", "--no-render"]
     elif mode == "build":
         argv.append("--no-render")
@@ -440,9 +657,13 @@ def thumb(job: Path, kind: str, index: int, t: float) -> Path | None:
     vf = "scale=320:-2"
     cache = job / "work" / f"shots-{media.stem}.json"
     small = media.parent / "proxy" / f"{media.stem}.mp4"   # stills come from the small copy of a 4K source
+    if not media.exists() and not small.exists():
+        return None   # the footage is gone from this computer: no still to make
     if kind == "montage" and cache.exists():
         crop = read_json(cache).get("crop")
-        if crop and small.exists():   # the crop is in the big file's pixels: say it as fractions
+        if crop and small.exists() and not media.exists():
+            pass   # only the small copy is left, and the crop is in the big file's pixels
+        elif crop and small.exists():   # the crop is in the big file's pixels: say it as fractions
             from .util import probe
             info = probe(media)
             w, h = info["width"], info["height"]
@@ -461,24 +682,40 @@ def thumb(job: Path, kind: str, index: int, t: float) -> Path | None:
     return out if out.exists() else None
 
 
-def source(job: Path, kind: str, index: int) -> Path | None:
+def source(job: Path, kind: str, index: int, audio: bool = False, proxy: bool = False) -> Path | None:
+    """Play original footage; analysis proxies are opt-in or missing-file recovery.
+
+    The 540p analysis copy loses detail when enlarged in the 1080p monitor. It
+    also has no sound, so audio requests must always use the original file.
+    """
     src = read_json(job / "sources.json")
     if kind not in ("speech", "montage", "music") or not 0 <= index < len(src[kind]):
         return None
     media = Path(src[kind][index])
-    small = media.parent / "proxy" / f"{media.stem}.mp4"   # the source monitor plays the small copy of a 4K source
-    if small.is_file():
+    original_exists = media.is_file()
+    if original_exists and (audio or not proxy):
+        return media
+    small = media.parent / "proxy" / f"{media.stem}.mp4"
+    if small.is_file() and not audio:
         return small
-    return media if media.is_file() else None
+    return media if original_exists else None
 
 
-def wave(job: Path) -> dict:
-    """Loudness peaks of the mixed soundtrack, 100 per second, for the audio track."""
+def wave(job: Path, key: str | None = None) -> dict:
+    """Loudness peaks, 100 per second: of the mixed soundtrack, or of one source (`key`, "role:name") for
+    an audio clip on the timeline."""
     import numpy as np
-    sound = job / "work" / "soundtrack.m4a"
-    if not sound.exists():
-        return {"rate": 100, "peaks": []}
-    cache = job / "work" / "wave.json"
+    if key:
+        from . import sequence
+        sound = sequence.files(job).get(key)
+        if not sound or not sound.exists():
+            return {"rate": 100, "peaks": []}
+        cache = job / "work" / f"wave-{key.split(':', 1)[0]}-{sound.stem}.json"
+    else:
+        sound = job / "work" / "soundtrack.m4a"
+        if not sound.exists():
+            return {"rate": 100, "peaks": []}
+        cache = job / "work" / "wave.json"
     stamp = int(sound.stat().st_mtime)
     if cache.exists():
         cached = read_json(cache)

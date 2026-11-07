@@ -29,16 +29,31 @@ def _claude_token() -> str | None:
         return None
 
 
-def _claude(prompt: str, system: str) -> str | None:
+def _image_blocks(images: list[Path] | None) -> list[dict]:
+    """JPEG/PNG files as Claude image content blocks."""
+    import base64
+    blocks = []
+    for img in images or []:
+        img = Path(img)
+        if not img.exists():
+            continue
+        mime = "image/png" if img.suffix.lower() == ".png" else "image/jpeg"
+        blocks.append({"type": "image", "source": {"type": "base64", "media_type": mime,
+                                                   "data": base64.b64encode(img.read_bytes()).decode()}})
+    return blocks
+
+
+def _claude(prompt: str, system: str, images: list[Path] | None = None) -> str | None:
     token = _claude_token()
     if not token:
         return None
+    content = _image_blocks(images) + [{"type": "text", "text": prompt}] if images else prompt
     for model in dict.fromkeys(CLAUDE_MODELS):
         body = {
             "model": model,
             "max_tokens": 4000,
             "system": f"{CLAUDE_IDENTITY}\n\n{system}",
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": content}],
         }
         req = urllib.request.Request(
             "https://api.anthropic.com/v1/messages",
@@ -61,7 +76,8 @@ def _claude(prompt: str, system: str) -> str | None:
     return None
 
 
-def _codex(prompt: str, system: str) -> str | None:
+def _codex(prompt: str, system: str, images: list[Path] | None = None) -> str | None:
+    """Text only: codex exec gets the numbers, never the pictures."""
     exe = shutil.which("codex")
     if not exe:
         return None
@@ -90,11 +106,12 @@ def extract_json(text: str):
     return json.JSONDecoder().raw_decode(text[start:])[0]
 
 
-def ask_json(prompt: str, system: str, provider: str = "auto"):
-    """Return parsed JSON from the first provider that answers validly, else None."""
+def ask_json(prompt: str, system: str, provider: str = "auto", images: list[Path] | None = None):
+    """Return parsed JSON from the first provider that answers validly, else None.
+    `images`: contact sheets etc. for providers that can see (Claude); the others get the text only."""
     order = {"auto": [_claude, _codex], "claude": [_claude], "codex": [_codex], "none": []}[provider]
     for fn in order:
-        reply = fn(prompt, system)
+        reply = fn(prompt, system, images)
         if not reply:
             continue
         try:

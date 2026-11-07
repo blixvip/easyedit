@@ -1,0 +1,83 @@
+STYLE nio_trade: 58 reels measured 2026-10-07
+Frame: 4:3 (960x720, 30 fps); aspects seen {'1:1': 0.05, '4:3': 0.93, '9:16': 0.02}
+Modes: mixed 36%, voiceover 53%, montage 10%   (voiceover = talking over pictures, montage = music and cuts)
+
+== ALL (58 reels)
+Length: median 20.06s (middle half 16.945-24.457s), 13 cuts per reel, shots 0.25-3.508s (median 0.625s)
+Music: 112 bpm; 45% of cuts land on a beat (confidence 0.22, grid: free); drop at 1% of the reel; cuts/s before 0.25 after 0.685
+Cut pattern (in units of 0.5 beat): [3, 2, 5, 15, 3, 7, 8, 4, 3, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2]  [from DbjS7GJRexc]
+Speed ramps: 40% of shots ramp; kinds {'in': 0.58, 'out': 0.28, 'hit': 0.14}; sequence seen ['in', 'in', 'out', None, 'hit']
+Camera moves at cut (measured): {'cut': 0.66, 'punch': 0.12, 'spin': 0.1, 'zoom-out': 0.05, 'slide-left': 0.03, 'slide-right': 0.03, 'whip': 0.01}
+Grade: nearest 'warm'  luma 58/255, contrast 49, saturation 84, warmth +10 (R-B), fade 0, split +2, vignette 0.79, grain 1.28, sharp 426
+Captions: on screen 39% of the time, centre at y=0.732 of the frame height, line height 0.029 of the frame, light text, behaviour 'accumulate' {'accumulate': 0.66, 'lines': 0.28, 'static': 0.07}
+Cards (screenshots / text cards): 3% of frames
+Mono (black and white): 6% of frames; intro 0.0, outro 0.0
+Flashes: 0.0 per minute (0% at cuts); shake jitter 0.075 (0 = locked off, >2 = handheld)
+Faces: in 52% of frames, centre y=0.34, size 0.217
+Speech: 48% of the time, 207.0 wpm
+Sound design: hits at 10% of off-beat cuts, riser before the drop in 0%, impact on the drop in 0%
+Intro: first shot 2.604s, text in the first second 100%
+Outro: last shot 5.333s, text 100%, mono 0%, card {'None': 0.0, 'black': 0.98}
+
+== VOICEOVER (31 reels)
+Length: median 21.89s (middle half 17.83-26.28s), 11 cuts per reel, shots 0.25-4.979s (median 0.667s)
+Music: 112 bpm; 45% of cuts land on a beat (confidence 0.22, grid: free); drop at 1% of the reel; cuts/s before 0.1 after 0.62
+Cut pattern (in units of 1.0 beat): [1, 1, 1, 3, 2, 1, 1, 1]  [from DcFI1hWRE-i]
+Speed ramps: 40% of shots ramp; kinds {'in': 0.62, 'out': 0.28, 'hit': 0.09}; sequence seen ['in', 'in', 'out', None, 'hit']
+Camera moves at cut (measured): {'cut': 0.65, 'punch': 0.12, 'spin': 0.11, 'zoom-out': 0.05, 'slide-left': 0.03, 'slide-right': 0.02, 'whip': 0.01}
+Grade: nearest 'warm'  luma 54/255, contrast 50, saturation 90, warmth +16 (R-B), fade 0, split +2, vignette 0.83, grain 1.33, sharp 438
+Captions: on screen 39% of the time, centre at y=0.945 of the frame height, line height 0.029 of the frame, light text, behaviour 'accumulate' {'accumulate': 0.71, 'lines': 0.29}
+Cards (screenshots / text cards): 2% of frames
+Mono (black and white): 4% of frames; intro 0.0, outro 0.0
+Flashes: 0.0 per minute (0% at cuts); shake jitter 0.12 (0 = locked off, >2 = handheld)
+Faces: in 54% of frames, centre y=0.332, size 0.219
+Speech: 67% of the time, 200.0 wpm
+Sound design: hits at 8% of off-beat cuts, riser before the drop in 0%, impact on the drop in 0%
+Intro: first shot 4.125s, text in the first second 100%
+Outro: last shot 5.417s, text 100%, mono 0%, card {'black': 1.0}
+
+== MONTAGE (6 reels)
+Length: median 19.515s (middle half 18.35-22.57s), 20 cuts per reel, shots 0.208-2.229s (median 0.583s)
+Music: 114 bpm; 45% of cuts land on a beat (confidence 0.195, grid: free); drop at 0% of the reel; cuts/s before 2.08 after 0.75
+Cut pattern (in units of 0.5 beat): [7, 8, 4, 3, 5, 2, 2, 1, 1, 2, 4, 2, 2, 2, 2, 2]  [from DcE9JqZxkzR]
+Speed ramps: 49% of shots ramp; kinds {'in': 0.44, 'out': 0.24, 'hit': 0.32}; sequence seen [None, 'in', 'in', None, 'out', 'hit', None]
+Camera moves at cut (measured): {'cut': 0.64, 'punch': 0.12, 'spin': 0.07, 'zoom-out': 0.07, 'slide-right': 0.05, 'slide-left': 0.02, 'whip': 0.02}
+Grade: nearest 'neutral'  luma 69/255, contrast 49, saturation 53, warmth -3 (R-B), fade 0, split +2, vignette 0.83, grain 1.30, sharp 387
+Captions: on screen 39% of the time, centre at y=0.495 of the frame height, line height 0.027 of the frame, light text, behaviour 'accumulate' {'accumulate': 0.5, 'lines': 0.17, 'static': 0.33}
+Cards (screenshots / text cards): 5% of frames
+Mono (black and white): 11% of frames; intro 0.0, outro 0.0
+Flashes: 0.0 per minute (0% at cuts); shake jitter 0.075 (0 = locked off, >2 = handheld)
+Faces: in 33% of frames, centre y=0.34, size 0.193
+Speech: 10% of the time, 227.0 wpm
+Sound design: hits at 9% of off-beat cuts, riser before the drop in 0%, impact on the drop in 100%
+Intro: first shot 1.312s, text in the first second 100%
+Outro: last shot 5.042s, text 100%, mono 0%, card {'black': 1.0}
+
+== MIXED (21 reels)
+Length: median 19.08s (middle half 16.37-20.22s), 15 cuts per reel, shots 0.229-2.875s (median 0.583s)
+Music: 112 bpm; 50% of cuts land on a beat (confidence 0.22, grid: free); drop at 1% of the reel; cuts/s before 0.33 after 0.73
+Cut pattern (in units of 0.5 beat): [3, 2, 5, 15, 3, 7, 8, 4, 3, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2]  [from DbjS7GJRexc]
+Speed ramps: 40% of shots ramp; kinds {'in': 0.55, 'out': 0.3, 'hit': 0.15}; sequence seen ['hit', 'in', None, 'hit', 'in', None, 'hit']
+Camera moves at cut (measured): {'cut': 0.67, 'punch': 0.11, 'spin': 0.11, 'zoom-out': 0.05, 'slide-right': 0.03, 'slide-left': 0.03, 'whip': 0.01}
+Grade: nearest 'vivid'  luma 64/255, contrast 49, saturation 80, warmth +8 (R-B), fade 0, split +1, vignette 0.78, grain 1.23, sharp 403
+Captions: on screen 41% of the time, centre at y=0.711 of the frame height, line height 0.029 of the frame, light text, behaviour 'accumulate' {'accumulate': 0.62, 'lines': 0.29, 'static': 0.1}
+Cards (screenshots / text cards): 3% of frames
+Mono (black and white): 7% of frames; intro 0.0, outro 0.0
+Flashes: 0.0 per minute (0% at cuts); shake jitter 0.06 (0 = locked off, >2 = handheld)
+Faces: in 53% of frames, centre y=0.364, size 0.235
+Speech: 32% of the time, 218.0 wpm
+Sound design: hits at 20% of off-beat cuts, riser before the drop in 0%, impact on the drop in 0%
+Intro: first shot 2.375s, text in the first second 100%
+Outro: last shot 5.333s, text 100%, mono 0%, card {'None': 0.0, 'black': 0.95}
+
+== LOOK (named from the toolkit, source: llm)
+capStyle: subtitle
+capFont: caption
+capMotion: reveal-right
+capAnim: rise
+capFx: []
+capColor: #ffffff
+moves: ['cut', 'punch', 'spin', 'zoom-out', 'slide-left', 'slide-right']
+fx: ['mono']
+grade: warm
+notes: Rebuild captions as accumulating white text; use medium-weight sans serif, sentence case and no box as provisional choices since the contact sheets aren’t visible here. Keep the image warm and crisp, favor straight cuts with occasional punches and spins, use monochrome sparingly, and finish with roughly five seconds of text on black.

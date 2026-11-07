@@ -1,0 +1,676 @@
+{
+  "v": 1,
+  "name": "nio_trade",
+  "measured_at": "2026-10-07",
+  "reels": [
+    "Db1s8wmRg8w",
+    "Db38o-cRwjP",
+    "Db3C5TzRqCn",
+    "Db3heCWRzI8",
+    "Db6qqpRx88J",
+    "Db80Rp3xrVU",
+    "Db9Sb28RJWj",
+    "Db_OhkIREZK",
+    "DbjMcTNvdXO",
+    "DbjS7GJRexc",
+    "DbmUXIyRPGz",
+    "DbmWJ8DxuSU",
+    "DbnpfJ_RrE0",
+    "Dbns5n5xMyV",
+    "Dbsxa1Mxrr6",
+    "DbuKhElxKZG",
+    "DbuNXQ-RAsT",
+    "DbyTjdEx7XK",
+    "Dc1aJtGx3eQ",
+    "Dc4Z5I8RJAF",
+    "Dc_8HciBuqa",
+    "Dcb_wRhxG6A",
+    "DcbrDbmRGKG",
+    "Dcc45l-PonG",
+    "DcC8MgWxl5H",
+    "DcE9JqZxkzR",
+    "DceKjIixqcU",
+    "DcERqUNRKfJ",
+    "DcFI1hWRE-i",
+    "DchhQdBR2tV",
+    "DcHNI-dxP8v",
+    "DcjS-iIRIwN",
+    "DckSAAxxy98",
+    "DcMbr1mplnJ",
+    "DcmkpCrR0MR",
+    "DcNfVg0vNOm",
+    "DcogTLHxAsJ",
+    "DcPNLz_xrVh",
+    "DcrdETWxfXh",
+    "DcRZbDsxOpO",
+    "DcT1fnqxLQI",
+    "DcW_cqhRD9l",
+    "DcWz2M_vvFu",
+    "DcZVGiyPuJ0",
+    "Dda7a5xPcMW",
+    "DdaJLmAxbJ_",
+    "DdE8uLqJhqB",
+    "DdFtNTFR8kg",
+    "DdHtM-gBK_I",
+    "DdkuM-uN959",
+    "DdmGebMx3Ra",
+    "DdN2V5ry591",
+    "DdR49B4xmf9",
+    "DdXj4Hsx5Ow",
+    "DdXto_4RDgT",
+    "DdXUo1ORSZ2",
+    "DdZGW9UxrwX",
+    "DeH6y_8P3Zx"
+  ],
+  "frame": {
+    "aspect": "4:3",
+    "aspects": {
+      "1:1": 0.05,
+      "4:3": 0.93,
+      "9:16": 0.02
+    },
+    "width": 960,
+    "height": 720,
+    "fps": 30.0
+  },
+  "modes": {
+    "mixed": 0.36,
+    "voiceover": 0.53,
+    "montage": 0.1
+  },
+  "all": {
+    "count": 58,
+    "duration": {
+      "median": 20.06,
+      "iqr": [
+        16.945,
+        24.457
+      ]
+    },
+    "cuts_per_reel": 13.0,
+    "shot_len": {
+      "median": 0.625,
+      "p10": 0.25,
+      "p90": 3.508
+    },
+    "rhythm": {
+      "bpm": 112.0,
+      "grid": "free",
+      "beat_align": 0.455,
+      "confidence": 0.22,
+      "drop_frac": 0.01,
+      "density_before": 0.25,
+      "density_after": 0.685,
+      "pattern": [
+        3,
+        2,
+        5,
+        15,
+        3,
+        7,
+        8,
+        4,
+        3,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "unit_beats": 0.5,
+      "from": "DbjS7GJRexc"
+    },
+    "ramps": {
+      "fraction": 0.4,
+      "kinds": {
+        "in": 0.58,
+        "out": 0.28,
+        "hit": 0.14
+      },
+      "auto": [
+        "in",
+        "in",
+        "out",
+        null,
+        "hit"
+      ]
+    },
+    "moves": {
+      "cut": 0.66,
+      "punch": 0.12,
+      "spin": 0.1,
+      "zoom-out": 0.05,
+      "slide-left": 0.03,
+      "slide-right": 0.03,
+      "whip": 0.01
+    },
+    "mono": {
+      "fraction": 0.065,
+      "intro": 0.0,
+      "outro": 0.0
+    },
+    "grade": {
+      "luma": 58.24,
+      "contrast": 49.41,
+      "sat": 84.165,
+      "temp": 9.595,
+      "fade": 0.0,
+      "vignette": 0.79,
+      "grain": 1.28,
+      "sharp": 425.695,
+      "split": 1.69,
+      "lo_tint": [
+        0.75,
+        -2.6,
+        0.9
+      ],
+      "hi_tint": [
+        0.7,
+        -1.0,
+        0.35
+      ],
+      "nearest": "warm"
+    },
+    "captions": {
+      "fraction": 0.395,
+      "y": 0.732,
+      "size_frac": 0.029,
+      "mode": "accumulate",
+      "modes": {
+        "accumulate": 0.66,
+        "lines": 0.28,
+        "static": 0.07
+      },
+      "polarity": "light"
+    },
+    "cards": 0.03,
+    "flash": {
+      "per_min": 0.0,
+      "at_cut_frac": 0.0
+    },
+    "shake": {
+      "jitter": 0.075
+    },
+    "faces": {
+      "fraction": 0.525,
+      "cy": 0.34,
+      "size": 0.217
+    },
+    "speech": {
+      "fraction": 0.48,
+      "wpm": 207.0
+    },
+    "sfx": {
+      "hits_at_offbeat_cuts": 0.1,
+      "riser": 0.0,
+      "impact": 0.0
+    },
+    "intro": {
+      "shot_len": 2.604,
+      "text": 1.0
+    },
+    "outro": {
+      "shot_len": 5.333,
+      "text": 1.0,
+      "mono": 0.0,
+      "card": {
+        "None": 0.0,
+        "black": 0.98
+      }
+    }
+  },
+  "mixed": {
+    "count": 21,
+    "duration": {
+      "median": 19.08,
+      "iqr": [
+        16.37,
+        20.22
+      ]
+    },
+    "cuts_per_reel": 15.0,
+    "shot_len": {
+      "median": 0.583,
+      "p10": 0.229,
+      "p90": 2.875
+    },
+    "rhythm": {
+      "bpm": 112.0,
+      "grid": "free",
+      "beat_align": 0.5,
+      "confidence": 0.22,
+      "drop_frac": 0.01,
+      "density_before": 0.33,
+      "density_after": 0.73,
+      "pattern": [
+        3,
+        2,
+        5,
+        15,
+        3,
+        7,
+        8,
+        4,
+        3,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "unit_beats": 0.5,
+      "from": "DbjS7GJRexc"
+    },
+    "ramps": {
+      "fraction": 0.4,
+      "kinds": {
+        "in": 0.55,
+        "out": 0.3,
+        "hit": 0.15
+      },
+      "auto": [
+        "hit",
+        "in",
+        null,
+        "hit",
+        "in",
+        null,
+        "hit"
+      ]
+    },
+    "moves": {
+      "cut": 0.67,
+      "punch": 0.11,
+      "spin": 0.11,
+      "zoom-out": 0.05,
+      "slide-right": 0.03,
+      "slide-left": 0.03,
+      "whip": 0.01
+    },
+    "mono": {
+      "fraction": 0.07,
+      "intro": 0.0,
+      "outro": 0.0
+    },
+    "grade": {
+      "luma": 63.52,
+      "contrast": 49.18,
+      "sat": 79.56,
+      "temp": 8.22,
+      "fade": 0.0,
+      "vignette": 0.78,
+      "grain": 1.23,
+      "sharp": 402.59,
+      "split": 1.18,
+      "lo_tint": [
+        1.3,
+        -2.7,
+        0.7
+      ],
+      "hi_tint": [
+        1.1,
+        -1.3,
+        -0.3
+      ],
+      "nearest": "vivid"
+    },
+    "captions": {
+      "fraction": 0.41,
+      "y": 0.711,
+      "size_frac": 0.029,
+      "mode": "accumulate",
+      "modes": {
+        "accumulate": 0.62,
+        "lines": 0.29,
+        "static": 0.1
+      },
+      "polarity": "light"
+    },
+    "cards": 0.03,
+    "flash": {
+      "per_min": 0.0,
+      "at_cut_frac": 0.0
+    },
+    "shake": {
+      "jitter": 0.06
+    },
+    "faces": {
+      "fraction": 0.53,
+      "cy": 0.364,
+      "size": 0.235
+    },
+    "speech": {
+      "fraction": 0.32,
+      "wpm": 218.0
+    },
+    "sfx": {
+      "hits_at_offbeat_cuts": 0.2,
+      "riser": 0.0,
+      "impact": 0.0
+    },
+    "intro": {
+      "shot_len": 2.375,
+      "text": 1.0
+    },
+    "outro": {
+      "shot_len": 5.333,
+      "text": 1.0,
+      "mono": 0.0,
+      "card": {
+        "None": 0.0,
+        "black": 0.95
+      }
+    }
+  },
+  "voiceover": {
+    "count": 31,
+    "duration": {
+      "median": 21.89,
+      "iqr": [
+        17.83,
+        26.28
+      ]
+    },
+    "cuts_per_reel": 11.0,
+    "shot_len": {
+      "median": 0.667,
+      "p10": 0.25,
+      "p90": 4.979
+    },
+    "rhythm": {
+      "bpm": 112.0,
+      "grid": "free",
+      "beat_align": 0.45,
+      "confidence": 0.22,
+      "drop_frac": 0.01,
+      "density_before": 0.1,
+      "density_after": 0.62,
+      "pattern": [
+        1,
+        1,
+        1,
+        3,
+        2,
+        1,
+        1,
+        1
+      ],
+      "unit_beats": 1.0,
+      "from": "DcFI1hWRE-i"
+    },
+    "ramps": {
+      "fraction": 0.4,
+      "kinds": {
+        "in": 0.62,
+        "out": 0.28,
+        "hit": 0.09
+      },
+      "auto": [
+        "in",
+        "in",
+        "out",
+        null,
+        "hit"
+      ]
+    },
+    "moves": {
+      "cut": 0.65,
+      "punch": 0.12,
+      "spin": 0.11,
+      "zoom-out": 0.05,
+      "slide-left": 0.03,
+      "slide-right": 0.02,
+      "whip": 0.01
+    },
+    "mono": {
+      "fraction": 0.047,
+      "intro": 0.0,
+      "outro": 0.0
+    },
+    "grade": {
+      "luma": 53.91,
+      "contrast": 49.52,
+      "sat": 89.91,
+      "temp": 15.95,
+      "fade": 0.0,
+      "vignette": 0.83,
+      "grain": 1.33,
+      "sharp": 438.13,
+      "split": 1.69,
+      "lo_tint": [
+        0.7,
+        -2.8,
+        0.9
+      ],
+      "hi_tint": [
+        0.7,
+        -1.0,
+        0.4
+      ],
+      "nearest": "warm"
+    },
+    "captions": {
+      "fraction": 0.39,
+      "y": 0.945,
+      "size_frac": 0.029,
+      "mode": "accumulate",
+      "modes": {
+        "accumulate": 0.71,
+        "lines": 0.29
+      },
+      "polarity": "light"
+    },
+    "cards": 0.02,
+    "flash": {
+      "per_min": 0.0,
+      "at_cut_frac": 0.0
+    },
+    "shake": {
+      "jitter": 0.12
+    },
+    "faces": {
+      "fraction": 0.54,
+      "cy": 0.332,
+      "size": 0.219
+    },
+    "speech": {
+      "fraction": 0.67,
+      "wpm": 200.0
+    },
+    "sfx": {
+      "hits_at_offbeat_cuts": 0.08,
+      "riser": 0.0,
+      "impact": 0.0
+    },
+    "intro": {
+      "shot_len": 4.125,
+      "text": 1.0
+    },
+    "outro": {
+      "shot_len": 5.417,
+      "text": 1.0,
+      "mono": 0.0,
+      "card": {
+        "black": 1.0
+      }
+    }
+  },
+  "montage": {
+    "count": 6,
+    "duration": {
+      "median": 19.515,
+      "iqr": [
+        18.35,
+        22.57
+      ]
+    },
+    "cuts_per_reel": 19.5,
+    "shot_len": {
+      "median": 0.583,
+      "p10": 0.208,
+      "p90": 2.229
+    },
+    "rhythm": {
+      "bpm": 114.5,
+      "grid": "free",
+      "beat_align": 0.455,
+      "confidence": 0.195,
+      "drop_frac": 0.005,
+      "density_before": 2.08,
+      "density_after": 0.75,
+      "pattern": [
+        7,
+        8,
+        4,
+        3,
+        5,
+        2,
+        2,
+        1,
+        1,
+        2,
+        4,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "unit_beats": 0.5,
+      "from": "DcE9JqZxkzR"
+    },
+    "ramps": {
+      "fraction": 0.49,
+      "kinds": {
+        "in": 0.44,
+        "out": 0.24,
+        "hit": 0.32
+      },
+      "auto": [
+        null,
+        "in",
+        "in",
+        null,
+        "out",
+        "hit",
+        null
+      ]
+    },
+    "moves": {
+      "cut": 0.64,
+      "punch": 0.12,
+      "spin": 0.07,
+      "zoom-out": 0.07,
+      "slide-right": 0.05,
+      "slide-left": 0.02,
+      "whip": 0.02
+    },
+    "mono": {
+      "fraction": 0.118,
+      "intro": 0.0,
+      "outro": 0.0
+    },
+    "grade": {
+      "luma": 69.01,
+      "contrast": 49.175,
+      "sat": 52.67,
+      "temp": -3.475,
+      "fade": 0.0,
+      "vignette": 0.835,
+      "grain": 1.305,
+      "sharp": 387.34,
+      "split": 1.565,
+      "lo_tint": [
+        -0.25,
+        -2.0,
+        1.25
+      ],
+      "hi_tint": [
+        0.25,
+        -0.45,
+        0.8
+      ],
+      "nearest": "neutral"
+    },
+    "captions": {
+      "fraction": 0.39,
+      "y": 0.495,
+      "size_frac": 0.027,
+      "mode": "accumulate",
+      "modes": {
+        "accumulate": 0.5,
+        "lines": 0.17,
+        "static": 0.33
+      },
+      "polarity": "light"
+    },
+    "cards": 0.055,
+    "flash": {
+      "per_min": 0.0,
+      "at_cut_frac": 0.0
+    },
+    "shake": {
+      "jitter": 0.075
+    },
+    "faces": {
+      "fraction": 0.33,
+      "cy": 0.34,
+      "size": 0.193
+    },
+    "speech": {
+      "fraction": 0.105,
+      "wpm": 227.0
+    },
+    "sfx": {
+      "hits_at_offbeat_cuts": 0.09,
+      "riser": 0.0,
+      "impact": 1.0
+    },
+    "intro": {
+      "shot_len": 1.312,
+      "text": 1.0
+    },
+    "outro": {
+      "shot_len": 5.042,
+      "text": 1.0,
+      "mono": 0.0,
+      "card": {
+        "black": 1.0
+      }
+    }
+  },
+  "llm": {
+    "source": "llm",
+    "capStyle": "subtitle",
+    "capFont": "caption",
+    "capMotion": "reveal-right",
+    "capAnim": "rise",
+    "capFx": [],
+    "moves": [
+      "cut",
+      "punch",
+      "spin",
+      "zoom-out",
+      "slide-left",
+      "slide-right"
+    ],
+    "fx": [
+      "mono"
+    ],
+    "grade": "warm",
+    "notes": "Rebuild captions as accumulating white text; use medium-weight sans serif, sentence case and no box as provisional choices since the contact sheets aren’t visible here. Keep the image warm and crisp, favor straight cuts with occasional punches and spins, use monochrome sparingly, and finish with roughly five seconds of text on black.",
+    "capColor": "#ffffff"
+  }
+}

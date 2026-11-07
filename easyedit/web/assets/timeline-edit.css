@@ -1,0 +1,77 @@
+/* Editable video/audio tracks. Names are separate from the optional nle decoration layer so its
+   filmstrip refresh never replaces buttons, handles, or pointer targets. */
+#seqToolbar { display: flex; align-items: center; gap: 5px; flex: none; min-height: 31px; padding: 4px 8px;
+  overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--line); background: #252525; }
+body.nle #seqToolbar { margin-left: var(--tools); margin-right: var(--meter); }
+#seqToolbar > * { flex-shrink: 0; }
+#seqToolbar button { height: 22px; font-size: 10.5px; }
+.ee-toolbar-divider { height: 17px; width: 1px; background: #444; margin: 0 2px; }
+.ee-linked { display: flex; align-items: center; gap: 5px; margin: 0 3px; white-space: nowrap; font-size: 10.5px; }
+.ee-linked input, .ee-checkrow input, .ee-effects input { appearance: auto; width: 13px; height: 13px; padding: 0; margin: 0;
+  accent-color: var(--accent); flex: none; }
+body.ee-sequence-editor #layers { display: flex; flex-direction: column; }
+.ee-track { display: flex; height: 54px; flex: none; position: relative; }
+.ee-track.audio { height: 44px; }
+.ee-trackhead { position: sticky; left: 0; z-index: 6; width: var(--hw); flex: none; padding: 0 10px; display: flex; align-items: center;
+  gap: 8px; background: #292929; border-right: 1px solid #101010; border-bottom: 1px solid #161616; }
+.ee-track-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 27px; height: 21px; background: #333c49;
+  border: 1px solid #45566c; border-radius: 2px; font: 600 10px var(--ui); color: #e3eaf3; }
+.ee-track.audio .ee-track-badge { background: #2c4236; border-color: #405d4b; }
+.ee-track-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.ee-track-toggle { width: 27px; padding: 0 3px; height: 21px; justify-content: center; font-size: 10px; border-color: #555; }
+.ee-track-toggle[aria-pressed=true] { background: #87691e; border-color: #aa8425; color: #fff; }
+.ee-trackbody { position: relative; flex: none; background: #212225; border-bottom: 1px solid #151515; min-height: 100%; }
+.ee-track.audio .ee-trackbody { background: #202422; }
+.ee-track.track-off .ee-trackbody { opacity: .4; }
+.ee-track.drop-target .ee-trackbody { background: #25435b; box-shadow: inset 0 0 0 1px var(--accent); }
+.ee-empty-track { position: sticky; left: calc(var(--hw) + 10px); display: inline-block; padding: 15px 12px; color: #6f7780;
+  font-size: 10px; pointer-events: none; }
+.ee-track.audio .ee-empty-track { padding-top: 11px; }
+.ee-clip { position: absolute; top: 3px; bottom: 3px; border: 1px solid #17202c; border-radius: 2px; overflow: hidden; min-width: 3px;
+  background: #5278a0; color: #f1f6ff; cursor: grab; touch-action: none; user-select: none; outline: 0; }
+.ee-clip.audio { background: #466f59; border-color: #203b2c; color: #f3fff5; }
+.ee-clip.hero { background: #a09040; border-color: #665617; color: #fffbe5; }
+.ee-clip:hover { filter: brightness(1.13); }
+.ee-clip.selected, .ee-clip:focus-visible { border-color: #87c6ff; box-shadow: inset 0 0 0 1px #87c6ff, 0 0 0 1px #87c6ff; z-index: 3; }
+.ee-clip.disabled-clip { opacity: .35; }
+.ee-clip.dragging { z-index: 5; filter: brightness(1.2); pointer-events: none; box-shadow: 0 4px 14px #0009, inset 0 0 0 1px #fff; }
+.ee-clip-label { position: relative; z-index: 1; display: block; height: 17px; padding: 1px 7px; line-height: 14px; font-size: 10px;
+  font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #0003; pointer-events: none; }
+.ee-clip-picture { position: absolute; left: 0; right: 0; top: 17px; bottom: 0; background-size: auto 100%; background-repeat: repeat-x;
+  opacity: .78; pointer-events: none; }
+.ee-clip-wave { position: absolute; left: 3px; right: 3px; top: 18px; height: 18px; width: calc(100% - 6px); opacity: .8; pointer-events: none; }
+.ee-trim { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 4; cursor: ew-resize; touch-action: none; }
+.ee-trim.start { left: 0; border-left: 2px solid #c8e5ff99; }
+.ee-trim.end { right: 0; border-right: 2px solid #c8e5ff99; }
+.ee-trim:hover, .ee-clip.selected .ee-trim { background: #8acbff44; }
+.ee-clip.compact .ee-trim { display: none; }
+body.ee-timeline-drag, body.ee-timeline-drag * { cursor: grabbing !important; }
+body[data-tool=cut] .ee-trackbody, body[data-tool=cut] .ee-clip { cursor: crosshair; }
+body[data-tool=hand] .ee-trackbody, body[data-tool=hand] .ee-clip { cursor: grab; }
+body[data-tool=zoom] .ee-trackbody, body[data-tool=zoom] .ee-clip { cursor: zoom-in; }
+body[data-tool=cut] .ee-trim, body[data-tool=hand] .ee-trim, body[data-tool=zoom] .ee-trim { cursor: inherit; }
+body.ee-timeline-pan, body.ee-timeline-pan * { cursor: grabbing !important; }
+body.ee-seq-selected #lt-fx #shotTools, body.ee-seq-selected #fxhead { display: none; }
+.ee-inspector { padding: 10px; min-height: 0; }
+.ee-inspector-head { display: grid; gap: 3px; padding-bottom: 10px; margin-bottom: 3px; border-bottom: 1px solid #3a3a3a; }
+.ee-inspector-head b { color: #ececec; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
+.ee-inspector-head span { color: var(--blue); font-size: 10.5px; }
+.ee-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; padding: 8px 0; }
+.ee-field { margin: 0; min-width: 0; display: grid; gap: 4px; font-size: 10.5px; }
+.ee-field > span { margin: 0; color: #a9a9a9; }
+.ee-field input, .ee-field select { width: 100%; min-width: 0; height: 26px; padding: 3px 6px; }
+.ee-checkrow { display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 4px 0 10px; }
+.ee-checkrow label, .ee-effects label { margin: 0; display: flex; align-items: center; gap: 6px; color: #ccc; font-size: 10.5px; }
+.ee-inspector details { border-top: 1px solid #3a3a3a; }
+.ee-inspector summary { padding: 8px 0; cursor: pointer; color: #ddd; font-size: 11px; }
+.ee-effects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 2px 0 12px; }
+.ee-inspector-hint { margin: 12px 0 4px; color: #909090; font-size: 10.5px; line-height: 1.55; }
+@media (max-width: 700px) {
+  .ee-trackhead { padding: 0 7px; gap: 5px; }
+  .ee-track-name { font-size: 10px; }
+  .ee-track-badge { min-width: 24px; font-size: 9px; }
+  .ee-track-toggle { width: 23px; }
+  #seqToolbar { min-height: 32px; flex-wrap: wrap; overflow: visible; gap: 4px; }
+  #seqToolbar button { font-size: 10px; }
+  #seqAddShot, .ee-toolbar-divider { display: none; }
+}

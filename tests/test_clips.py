@@ -2,6 +2,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from easyedit import clips
 from easyedit.util import read_json, write_json
@@ -85,6 +86,30 @@ class RemoveClipTest(unittest.TestCase):
 
 
 class LinkTest(unittest.TestCase):
+    def test_upgraded_download_retains_its_youtube_origin(self):
+        for name in ["dI0cfKtpfGI.mp4", "dI0cfKtpfGI.hq-2160p-a1b2c3d4.mp4"]:
+            self.assertEqual(clips._youtube_id(Path(name)), "dI0cfKtpfGI")
+        self.assertIsNone(clips._youtube_id(Path("local-video.hq-2160p.mp4")))
+
+    def test_restore_upgraded_source_preserves_timeline_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp)
+            saved = job / "downloads" / "montage" / "dI0cfKtpfGI.hq-2160p-a1b2c3d4.mp4"
+            saved.parent.mkdir(parents=True)
+            downloaded = saved.with_name("dI0cfKtpfGI.mp4")
+            downloaded.write_bytes(b"restored original quality")
+            sources = {"speech": [], "montage": [str(saved)], "music": []}
+            write_json(job / "sources.json", sources)
+            timeline = {"video": [[{"id": "clip", "src": f"montage:{saved.name}"}]]}
+            write_json(job / "timeline.json", timeline)
+            with patch("easyedit.fetch.download", return_value=downloaded) as download:
+                self.assertEqual(clips.restore(job), 1)
+            self.assertEqual(download.call_args.args[0], "https://www.youtube.com/watch?v=dI0cfKtpfGI")
+            self.assertTrue(download.call_args.kwargs["upgrade"])
+            self.assertEqual(read_json(job / "sources.json"), sources)
+            self.assertEqual(read_json(job / "timeline.json"), timeline)
+            self.assertEqual(saved.read_bytes(), downloaded.read_bytes())
+
     def test_sites_that_block_apps_say_so(self):
         with self.assertRaises(ValueError) as caught:
             clips._from_link("https://getyarn.io/yarn-clip/0000")
@@ -93,6 +118,42 @@ class LinkTest(unittest.TestCase):
     def test_a_sakugabooru_post_and_a_plain_link(self):
         self.assertEqual(clips._from_link("https://www.sakugabooru.com/post/show/146024")["id"], "146024")
         self.assertEqual(clips._from_link("https://youtu.be/dI0cfKtpfGI")["site"], "web")
+
+
+class ImportClipTest(unittest.TestCase):
+    def test_same_name_local_sources_keep_distinct_files_and_cache_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            job, files = _job(root)
+            incoming = root / "other" / "mo-a.mp4"
+            incoming.parent.mkdir()
+            incoming.write_bytes(b"new local footage")
+            imported, _ = clips._bring(job, {"site": "link", "url": str(incoming)}, "montage")
+            self.assertNotEqual(imported.stem, "mo-a")
+            self.assertIn((job / "downloads").resolve(), imported.resolve().parents)
+            self.assertEqual(imported.read_bytes(), b"new local footage")
+            self.assertEqual(incoming.read_bytes(), b"new local footage")
+            self.assertEqual(Path(files["mo-a.mp4"]).read_bytes(), b"x")
+            again, _ = clips._bring(job, {"site": "link", "url": str(incoming)}, "montage")
+            self.assertEqual(again, imported)
+
+    def test_different_extensions_cannot_share_an_analysis_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            job, files = _job(root)
+            incoming = root / "mo-a.mov"
+            incoming.write_bytes(b"different video")
+            imported, _ = clips._bring(job, {"site": "file", "url": str(incoming)}, "montage")
+            self.assertNotEqual(imported.stem, "mo-a")
+            self.assertEqual(imported.suffix, ".mov")
+            self.assertTrue(incoming.is_file())
+
+    def test_an_existing_source_can_be_added_to_another_role_without_copying(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job, files = _job(Path(tmp))
+            original = Path(files["mo-a.mp4"])
+            imported, _ = clips._bring(job, {"site": "file", "url": str(original)}, "speech")
+            self.assertEqual(imported, original)
 
 
 if __name__ == "__main__":

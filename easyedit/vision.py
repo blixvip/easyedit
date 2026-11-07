@@ -136,11 +136,10 @@ class FaceDetector:
         return out
 
 
-def cover_map(src_w: int, src_h: int, out_w: int, out_h: int):
-    """Map normalized source coords -> output px under object-fit: cover."""
-    scale = max(out_w / src_w, out_h / src_h)
-    dw, dh = src_w * scale, src_h * scale
-    ox, oy = (out_w - dw) / 2, 0.0  # top-anchored, matching assemble._vf
+def cover_map(src_w: int, src_h: int, out_w: int, out_h: int, anchor=(0.5, 0.0), fit: str = "cover"):
+    """Map normalized source coords -> output px the way assemble.cover() places the picture."""
+    from .assemble import cover
+    dw, dh, ox, oy = cover(src_w, src_h, out_w, out_h, anchor, fit)
     return lambda nx, ny: (ox + nx * dw, oy + ny * dh)
 
 

@@ -57,8 +57,11 @@ def encoder() -> list[str]:
     return ["-c:v", "libx264", "-preset", "slow", "-crf", "19"]
 
 
-def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str) -> None:
+def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str,
+                 width: int = 1920, height: int = 1080) -> None:
     html = (ROOT / "template" / "index.html").read_text(encoding="utf-8")
+    html = (html.replace("__W__", str(int(width))).replace("__H__", str(int(height)))
+            .replace("__DW__", str(int(width) // 3)).replace("__DH__", str(int(height) // 3)))
     depth = ""
     if (render_dir / "depth.mp4").exists():  # white = near; the film layer reads it as a second texture
         depth = ('  <video id="depth" class="clip" src="depth.mp4" data-start="0" data-duration="__DURATION__"\n'
@@ -84,7 +87,8 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
     a0, b0 = (int(only[0] * fps), min(frames, int(only[1] * fps))) if only else (0, frames)
     n = max(1, min(PARALLEL, (b0 - a0) // (fps * 2)))
     marks = [a0 + round(i * (b0 - a0) / n) for i in range(n + 1)]
-    section_html(rd, 0, frames / fps, fps, "index.html")  # full composition for `hyperframes preview`
+    cw, ch = int(edit.get("width") or 1920), int(edit.get("height") or 1080)
+    section_html(rd, 0, frames / fps, fps, "index.html", cw, ch)  # full composition for `hyperframes preview`
     work = job / "work" / "sections"
     work.mkdir(parents=True, exist_ok=True)
     wanted = {f"section-{a}-{b}" for a, b in zip(marks, marks[1:])}
@@ -103,7 +107,7 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
             log(f"render: reuse section {a / fps:.1f}-{b / fps:.1f}s")
             continue
         name = f"section-{a}-{b}.html"
-        section_html(rd, a / fps, (b - a) / fps, fps, name)
+        section_html(rd, a / fps, (b - a) / fps, fps, name, cw, ch)
         logf = work / f"section-{a}-{b}.log"
         cmd = ["node", str(CLI), "render", ".", "--composition", name, "--fps", str(fps), "--quality", quality,
                "--low-memory-mode", "--workers", "1", *GPU, "--frames-cache-dir", str(work / f"cache-{k}"),

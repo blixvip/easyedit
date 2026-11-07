@@ -18,7 +18,7 @@
   [hidden] { display: none !important; }
   html, body { height: 100%; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 400 11.5px/1.4 var(--ui);
-         display: grid; grid-template-rows: 32px minmax(0, 1fr) var(--tl); gap: 3px; overflow: hidden; user-select: none;
+         display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 32px minmax(0, 1fr) var(--tl); gap: 3px; overflow: hidden; user-select: none;
          -webkit-font-smoothing: antialiased; }
   body.scrub, body.scrub * { cursor: ew-resize !important; }
   ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -397,6 +397,7 @@
   #fnum { font-size: 10px; color: var(--faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
   #tlbar .gap { flex: 1; }
   #sel { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sel.warn { color: var(--warn); cursor: help; }
   #tlscroll { overflow: auto; position: relative; background: #1e1e1e; flex: 1; min-height: 0; }
   #lane { position: relative; min-height: 100%; }
   #rrow { display: flex; position: sticky; top: 0; z-index: 7; height: 24px; }
@@ -766,9 +767,93 @@
   body[data-vbg=checker] #stagewrap { background: repeating-conic-gradient(#3a3a3a 0 25%, #2a2a2a 0 50%) 0 0 / 24px 24px; }
   .panel.max, #tl.max { position: fixed !important; inset: 35px 0 0 0; z-index: 40; width: auto !important; height: auto !important; }
   html.still *, html.still *::before, html.still *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+
+  /* Compact windows keep every panel reachable without clipping the preview or export controls. */
+  #panelnav { display: none; }
+  #tl { min-width: 0; }
+  #previewState { position: absolute; inset: 0; z-index: 4; display: flex; gap: 12px; flex-direction: column; align-items: center; justify-content: center; background: #171717; color: var(--dim); }
+  .seqclip { position: absolute; top: 2px; height: calc(var(--row, 28px) - 4px); overflow: hidden; text-overflow: ellipsis; display: block; text-align: left; background: var(--c); color: var(--k); border: 1px solid #171717; }
+  .seqoff { opacity: .45; }
+  #top > * { flex-shrink: 0; }
+  #top .name, #top .gap, #top .chip { flex-shrink: 1; }
+  #top .name { min-width: 0; }
+  #watch { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  #ltabs, #tabs { overflow-x: auto; scrollbar-width: thin; }
+  #ltabs > button, #tabs > button { flex-shrink: 0; }
+  #tlbar { overflow-x: auto; scrollbar-width: thin; }
+  #tlbar > * { flex-shrink: 0; }
+  #busy .bar { max-width: 100%; }
+  #toasts { max-width: calc(100vw - 24px); }
+  @media (min-width: 1001px) and (max-width: 1250px) {
+    #main { grid-template-columns: minmax(245px, 28%) minmax(0, 1fr) minmax(280px, 28%); }
+    #gripL, #gripR { display: none; }
+    #watch { max-width: 130px; }
+    #top .kind { display: none; }
+  }
+  @media (max-width: 1000px) {
+    body { grid-template-rows: 62px minmax(0, 1fr) min(var(--tl), 38vh); }
+    #top { flex-wrap: wrap; align-content: center; gap: 4px; }
+    #top .sep, #top .kind, #top .name { display: none; }
+    #top::after { content: ""; flex-basis: 100%; order: 1; height: 0; }
+    #top .chip { order: 2; flex: 1 1 80px; min-width: 0; max-width: none; font-size: 10px; }
+    #histMenu { order: 3; }
+    #watch { order: 4; max-width: 180px; font-size: 10px; }
+    #retrySave { order: 4; }
+    #runbar { top: 61px; }
+    #main { display: flex; flex-direction: column; min-width: 0; }
+    #panelnav { display: flex; align-items: center; gap: 4px; padding: 3px 6px; flex: none; background: var(--hdr); }
+    #panelnav .gap { flex: 1; }
+    #panelnav button { border-color: transparent; }
+    #panelnav button.on { background: #17324f; color: var(--blue); border-color: #24517f; }
+    #left, #mon, #right { display: none; flex: 1; min-height: 0; width: 100%; }
+    body[data-panel=project] #left, body[data-panel=viewer] #mon, body[data-panel=controls] #right { display: flex; }
+    #gripL, #gripR, #grip { display: none; }
+    #tlfoot > span:not(.gap) { display: none; }
+    #tlfoot input { max-width: 180px; }
+    #fatal { top: 62px; }
+    .panel.max, #tl.max { inset: 65px 0 0 0; }
+  }
+  @media (max-width: 700px) {
+    :root { --hw: 140px; }
+    #top { padding: 0 6px; }
+    #top .logo { padding-right: 5px; margin-right: 0; }
+    #toolHand, #toolZoom { display: none; }
+    #top > a:nth-child(2) { font-size: 10px; }
+    #top button { padding-left: 6px; padding-right: 6px; }
+    #top .icon { width: 21px; }
+    #apply { font-size: 10px; }
+    #watch { max-width: 125px; }
+    #vfoot .meta { display: none; }
+    #srcbar { flex-wrap: wrap; flex-basis: 100%; order: 2; }
+    #vfoot { flex-wrap: wrap; height: auto; min-height: 28px; }
+    #tcbox { width: 140px; min-width: 140px; }
+    #fnum { display: none; }
+    #tlbar #sel { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+    #pbar { flex-wrap: wrap; }
+    #pbar .filters { flex: 1; }
+    #prefs { grid-template-columns: 110px minmax(0, 1fr); }
+    #prefs nav { padding: 12px 4px; }
+    #prefs nav button { padding: 0 6px; font-size: 10px; }
+    #prefs main { padding: 16px 12px 30px; }
+    .prow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .prow .seg { flex-wrap: wrap; }
+    #keyFind { width: 100%; }
+    .krow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .krow .keys { justify-content: flex-start; }
+  }
+  @media (max-width: 480px) {
+    #toolSel, #top > a:nth-child(2) { display: none; }
+    #top .logo img { height: 14px; }
+    #watch { max-width: 90px; }
+    #histBtn { height: 20px; font-size: 10px; }
+    #rrow #cols, .lhead { font-size: 10px; }
+    .lhead .num, .lhead .du, #cols .c3, #cols > span:last-child { display: none; }
+  }
 </style>
+<link rel="stylesheet" href="/assets/nle.css?v=1">
+<link rel="stylesheet" href="/assets/timeline-edit.css?v=2">
 </head>
-<body data-tool="sel">
+<body data-tool="sel" data-panel="viewer">
 <div id="top">
   <a class="logo" href="/" title="Back to your projects"><img src="/assets/logo.svg" alt="easyedit"></a>
   <a href="/" title="Back to your projects" style="color:var(--dim);text-decoration:none;padding:0 6px 0 0;white-space:nowrap">&lsaquo; Projects</a>
@@ -785,6 +870,7 @@
   <button class="icon" id="prefsBtn" title="Preferences and keyboard shortcuts (Ctrl+,)"></button>
   <div class="menu" id="histMenu"><button id="histBtn" title="Earlier versions of this edit. One is kept every time you apply or export.">History</button><div id="histList"></div></div>
   <span class="chip" id="chip" role="status" aria-live="polite">Loading</span>
+  <button id="retrySave" hidden>Retry save</button>
   <button id="apply" title="Recut the footage with your changes so the preview matches">Apply changes</button>
   <div class="menu" id="exportMenu">
     <button class="primary" id="export">Export</button>
@@ -798,12 +884,17 @@
 <div id="runbar"><i></i></div>
 
 <div id="main">
+  <nav id="panelnav" aria-label="Editor panels">
+    <button data-panel="project">Project</button><button data-panel="viewer" class="on" aria-pressed="true">Viewer</button><button data-panel="controls">Controls</button>
+    <span class="gap"></span><button id="mobilePlay" title="Play or pause (Space)">Play</button>
+  </nav>
   <section class="panel" id="left">
     <div class="ptabs" id="ltabs">
       <button data-lt="project" class="on">Project</button>
       <button data-lt="kit" title="Movement, effect, colour, curve and text presets">Toolkit</button>
       <button data-lt="fx">Effect Controls<em id="fxTabName"></em></button>
       <button data-lt="clips" title="The clips this edit is cut from, and the sites to find more on">Footage<em id="clipCount"></em></button>
+      <button data-lt="songs" title="Search songs and edit audios, and make one the song the edit is cut to">Songs</button>
       <span class="gap"></span><span class="pm" id="pmL"></span>
     </div>
     <div class="page on" id="lt-project">
@@ -935,6 +1026,7 @@
       <div id="glass"></div>
       <span id="mode">Source shot</span>
       <div id="blank"><div><p id="blankText"></p><button class="primary" id="blankApply">Apply changes</button></div></div>
+      <div id="previewState" hidden role="status"><span>Loading preview…</span><button id="previewRetry" hidden>Retry preview</button></div>
       <div id="busy"><div><b id="busyTitle"></b><span id="busyStage"></span><div class="bar"><i></i></div></div></div>
     </div>
     <div id="vfoot">
@@ -1075,6 +1167,7 @@
     <button id="rm" hidden title="Keep the timing, put a different shot here">Swap shot</button>
     <button id="splitBtn" title="Cut the shot under the playhead in two (Ctrl+Shift+D)">Split at playhead</button>
     <span class="gap"></span>
+    <button id="beatLayout" hidden title="Back up this arranged timeline and switch to the beat editor">Use beat layout</button>
     <button class="icon" id="stairBtn" title="One layer per shot, or all shots on one layer"></button>
     <button id="lock" title="Keep the montage exactly in this order">Lock this order</button>
     <button id="reset" title="Let easyedit choose the shots again">Reset shots</button>
@@ -1106,10 +1199,16 @@ const $ = id => document.getElementById(id);
 const slug = location.pathname.split('/').filter(Boolean).pop();
 const API = `/api/edit/${slug}`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const post = (what, body) => fetch(`${API}/${what}`, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
-}).then(r => r.json());
-const clock = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
+const post = async (what, body) => {
+  try {
+    const response = await fetch(`${API}/${what}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+    });
+    const data = await response.json();
+    return response.ok ? data : { error: data.error || `Request failed (${response.status}).` };
+  } catch { return { error: 'Connection lost. Your changes are still here. Retry when easyedit is available.' }; }
+};
+const clock = t => { const n = Math.round(Math.max(0, Number(t) || 0) * 100); return `${Math.floor(n / 6000)}:${(n % 6000 / 100).toFixed(2).padStart(5, '0')}`; };
 const LEAD_HOLD = 1.2, WHITE = '#fbf8f4';
 const pad2 = n => String(n).padStart(2, '0');
 const tc = t => {   // timecode the way After Effects writes it: h:mm:ss:ff
@@ -1222,6 +1321,7 @@ let now = 0, pps = 30, filter = 'all';
 let pick = { kind: null };   // selected thing: {kind:'slot',i} | {kind:'hero'} | {kind:'speech'} | {kind:'shot',id} | {kind:'word',l,w}
 let pick0 = null;      // the timeline slot that was selected before a bin shot was opened
 let saving = false, dirty = false, running = false, wave = null;
+let saveTask = null, saveError = null, starting = false;
 let L = null;          // the clip library: every source in the edit, and the sites to find more on
 let site = 'youtube', hits = null, hitNote = '', finding = false;
 let tool = 'sel', vz = 'fit', panX = 0, panY = 0, muted = false;
@@ -1236,10 +1336,21 @@ function toast(text, bad) {
   setTimeout(() => el.remove(), bad ? 6000 : 3200);
 }
 
+function showPanel(panel) {
+  document.body.dataset.panel = panel;
+  for (const b of $('panelnav').querySelectorAll('[data-panel]')) {
+    const active = b.dataset.panel === panel;
+    b.classList.toggle('on', active); b.setAttribute('aria-pressed', String(active));
+  }
+  if (S) { fitStage(); setZoom(); }
+}
+$('panelnav').onclick = e => { const b = e.target.closest('[data-panel]'); if (b) showPanel(b.dataset.panel); };
+$('mobilePlay').onclick = () => $('play').click();
 // ---------- state ----------
 const pickDoc = s => ({
   plan: structuredClone(s.plan), quote: { clip: s.quote.clip, lines: structuredClone(s.quote.lines) },
   curation: structuredClone(s.curation), settings: structuredClone(s.settings),
+  seq: structuredClone(s.seq || { v: 1, fps: s.settings.fps, video: [[]], audio: [[]], off: [] }),
 });
 
 async function load() {
@@ -1250,14 +1361,39 @@ async function load() {
     return false;
   }
   S = res;
+  $('fatal').style.display = 'none';
   return true;
 }
 
+function beatLayoutKey(d) {
+  const c = d.curation, settings = d.settings;
+  return JSON.stringify([d.quote.clip, c.pin, c.exclude, c.hero, c.cuts,
+    settings.montage_length, settings.hero_length, settings.cut_rate, settings.velocity,
+    Object.entries(c.shots || {}).filter(([, o]) => o.speed != null || o.ramp != null || o.slip != null)
+      .map(([id, o]) => [id, o.speed, o.ramp, o.slip]).sort((a, b) => a[0].localeCompare(b[0]))]);
+}
+$('beatLayout').onclick = async () => {
+  if (window.EESequence) return EESequence.autoCut();
+  if (running || starting || !S.seqSaved || !await save()) return;
+  if (!confirm('Use the beat layout for this edit? Your arranged timeline is backed up, then replaced with the speech, montage and final shot shown by the beat settings.')) return;
+  starting = true; status();
+  const res = await post('save', { ...structuredClone(doc), seq: null });
+  starting = false;
+  if (res.error) { toast(res.error, true); status(res.error); return; }
+  S = res; doc = pickDoc(S); past = []; future = []; pick = { kind: null };
+  setZoom(); draw(); loadPreview();
+  toast('Beat layout selected. Your previous timeline is backed up. Apply changes to recut.');
+};
+
 function change(fn) {   // every edit goes through here so it can be undone and saved
-  past.push(JSON.stringify(doc));
+  if (!doc || running || starting) return;
+  const before = JSON.stringify(doc);
+  fn(doc);
+  if (window.EESequence) EESequence.syncChoices(JSON.parse(before), doc);
+  if (before === JSON.stringify(doc)) return;
+  past.push(before);
   if (past.length > 200) past.shift();
   future = [];
-  fn(doc);
   afterChange();
 }
 
@@ -1268,22 +1404,44 @@ function afterChange() {
   save();
 }
 
-async function save() {
-  if (saving) return;
-  saving = true;
-  while (dirty) {
-    dirty = false;
-    status();
-    const res = await post('save', doc).catch(() => ({ error: 'The easyedit app did not answer.' }));
-    if (res.error) { saving = false; status(res.error); toast(res.error, true); return; }
-    S = res;
-  }
-  saving = false;
-  draw();
+function save() {
+  if (saveTask) return saveTask;
+  if (!doc || !dirty) return Promise.resolve(!saveError);
+  saveTask = (async () => {
+    saving = true;
+    saveError = null;
+    try {
+      while (dirty) {
+        dirty = false;
+        status();
+        // Each request captures its own document. Edits made while it is in flight queue the next save.
+        const res = await post('save', structuredClone(doc));
+        if (res.error) {
+          dirty = true;
+          saveError = res.error;
+          toast(res.error, true);
+          return false;
+        }
+        S = res;
+        if (S.seqSaved) pushLive();
+      }
+      return true;
+    } finally {
+      saving = false;
+      saveTask = null;
+      draw();
+    }
+  })();
+  return saveTask;
 }
+$('retrySave').onclick = () => save();
+addEventListener('online', () => { if (dirty && !running) save(); });
+addEventListener('beforeunload', e => {
+  if (dirty || saving) { e.preventDefault(); e.returnValue = ''; }
+});
 
 function undo(from, to) {
-  if (!from.length) return;
+  if (!from.length || running || starting) return;
   to.push(JSON.stringify(doc));
   doc = JSON.parse(from.pop());
   pick = { kind: null };
@@ -1291,19 +1449,31 @@ function undo(from, to) {
 }
 
 function status(error) {
+  if (!S || !doc) return;
   const chip = $('chip');
   const stale = S.built.exists && !S.built.fresh;
-  const bad = error || S.timeline.error;
+  const bad = error || saveError || S.timeline.error;
+  $('retrySave').hidden = !saveError;
+  $('retrySave').disabled = saving || !!running || starting;
   chip.className = 'chip' + (bad ? ' err' : saving || stale || running || !S.built.exists ? ' warn' : '') + (running || saving ? ' busy' : '');
-  chip.textContent = bad || (running ? running : saving ? 'Saving…' : !S.built.exists ? 'Saved · Not cut yet'
-    : stale ? 'Saved · Preview shows an older cut' : 'Saved · Preview is current');
-  chip.title = bad || running || saving ? chip.textContent : !S.built.exists ? 'Your choices are saved. Press Apply changes to cut the footage.'
+  chip.textContent = bad || (running ? running : saving ? 'Saving…' : dirty ? 'Changes not saved' : doc.seq ? `Saved · ${window.EEPreview?.mode === 'rendered' ? 'Rendered' : 'Live'} preview` : 'Saved');
+  chip.title = bad || running || saving ? chip.textContent : doc.seq ? 'Edits save automatically and play live. Render preview includes depth and sound design.' : !S.built.exists ? 'Your choices are saved. Press Render preview to cut the footage.'
     : stale ? 'Your choices are saved. Captions, colours and effects already show live; the order and timing of shots show after Apply changes.'
     : 'Your choices are saved and the preview shows exactly this edit.';
   $('apply').className = stale || !S.built.exists ? 'primary' : '';
-  $('apply').disabled = $('export').disabled = !!running || !!S.timeline.error;
-  $('undo').disabled = !past.length;
-  $('redo').disabled = !future.length;
+  const locked = !!running || starting;
+  $('apply').disabled = $('blankApply').disabled = $('export').disabled = locked || !!S.timeline.error;
+  $('undo').disabled = locked || !past.length;
+  $('redo').disabled = locked || !future.length;
+  $('histBtn').disabled = locked;
+  $('beatLayout').hidden = !doc.seq;
+  $('beatLayout').textContent = 'Auto cut to beat';
+  $('beatLayout').title = 'Rebuild the main tracks from the beat settings. Undo restores your arrangement.';
+  $('beatLayout').disabled = locked;
+  $('splitBtn').hidden = false;
+  for (const id of ['lock', 'reset', 'stairBtn']) $(id).hidden = !!doc.seq;
+  $('left').inert = $('side').inert = $('tl').inert = locked;
+  document.body.setAttribute('aria-busy', String(locked));
   $('watch').hidden = !S.built.video;
   if (S.built.video) $('watch').href = S.built.video;
   $('watch').classList.toggle('old', !!S.built.exportOld);
@@ -1326,12 +1496,21 @@ function liveCaptions() {
 
 window.easyeditOverride = () => {
   const over = { title: doc.plan.title, palette: doc.plan.palette, grade: doc.plan.grade, look: doc.plan.look };
-  const caps = liveCaptions();
-  if (caps) over.captions = caps;
+  const caps = S.seqSaved ? S.sequenceCaptions : liveCaptions();
+  if (caps) over.captions = structuredClone(caps);
   return over;
 };
 window.easyeditReady = api => {
   player = api;
+  const video = $('frame').contentDocument.querySelector('video');
+  const ready = () => { $('previewState').hidden = true; clearTimeout(previewTimer); };
+  if (video && video.readyState < 2) video.addEventListener('loadeddata', ready, { once: true });
+  else ready();
+  if (video) video.addEventListener('error', () => {
+    $('previewState').hidden = false;
+    $('previewState').querySelector('span').textContent = 'Preview could not load. Try again or apply changes.';
+    $('previewRetry').hidden = false;
+  }, { once: true });
   const E = $('frame').contentWindow.EDIT;
   base.montage = E.montageStart / E.fps;
   // cuts made before shot ids were written: borrow them while the cut still lines up with the timeline
@@ -1347,37 +1526,55 @@ let wasPlaying = null;
 window.easyeditTick = (t, playing) => {
   if ($('stage').classList.contains('src')) return;
   now = t;
-  if (playing !== wasPlaying) { wasPlaying = playing; $('play').innerHTML = ic(playing ? 'pause' : 'play'); }
+  if (playing !== wasPlaying) { wasPlaying = playing; $('play').innerHTML = ic(playing ? 'pause' : 'play'); $('mobilePlay').textContent = playing ? 'Pause' : 'Play'; }
   showTime(t);
   moveHead(playing && PREFS.follow);
   playGuard(t, playing);
 };
 
 const lookOf = () => JSON.stringify([doc.plan.palette, doc.plan.grade, doc.plan.look]);
-let lookKey = '';
+let lookKey = '', previewTimer = null;
+function previewShotOpts() {
+  if (!S.seqSaved || !S.seq) return doc.curation.shots;
+  return Object.fromEntries((S.seq.video || []).flat().map(c => [c.id, c.opts || {}]));
+}
 function pushLive() {   // captions, title and shot effects are live; the look is baked in when the preview loads
+  if (window.EEPreview && doc && doc.seq) return EEPreview.push();
   if (!player) return;
   const key = lookOf();
   if (lookKey && key !== lookKey) { lookKey = key; return loadPreview(); }
   lookKey = key;
-  const caps = liveCaptions();
-  if (caps) player.setCaptions(caps);
+  const caps = S.seqSaved ? S.sequenceCaptions : liveCaptions();
+  if (caps) player.setCaptions(structuredClone(caps));
   player.setTitle(doc.plan.title);
-  player.setShotOpts(doc.curation.shots);
+  player.setShotOpts(previewShotOpts());
 }
 
 function loadPreview() {
+  if (window.EEPreview && doc && doc.seq) return EEPreview.load();
   player = null;
   wasPlaying = null;
   $('blank').style.display = S.built.exists ? 'none' : 'grid';
   $('blankText').textContent = S.built.missing
-    ? 'This edit has not been cut on this computer, and its footage is not here. Open the Footage tab and press Download again to get the same files back, then Apply changes.'
+    ? 'This edit has not been cut on this computer, and its footage is not here. Apply changes downloads the same files again, then cuts it.'
     : 'This edit has not been cut yet.';
+  $('previewState').hidden = true;
   if (!S.built.exists) return;
   base = { clip: S.quote.clip, speechStart: S.timeline.speechStart ?? Math.max(0, S.quote.start - 0.4), montage: 0 };
   lookKey = lookOf();
+  $('previewState').hidden = false;
+  $('previewState').querySelector('span').textContent = 'Loading preview…';
+  $('previewRetry').hidden = true;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    if ($('previewState').hidden) return;
+    $('previewState').querySelector('span').textContent = 'Preview is taking longer to load.';
+    $('previewRetry').hidden = false;
+  }, 15000);
   $('frame').src = `/render/${slug}/player.html?v=${S.built.version}`;
 }
+
+$('previewRetry').onclick = () => loadPreview();
 
 const ZS = [0.125, 0.25, 0.33, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 function fitK() {
@@ -1420,12 +1617,13 @@ function seek(t) {
 
 // ---------- source monitor ----------
 function openSource(id) {
+  if (matchMedia('(max-width: 1000px)').matches) showPanel('viewer');
   const shot = S.shots.find(s => s.id === id);
   if (!shot) return;
   if (player) player.pause();
   pick = { kind: 'shot', id };
   const v = $('srcv');
-  const url = `${API}/source?k=montage&i=${shot.src}`;
+  const url = `${API}/source?k=montage&i=${shot.src}&n=${encodeURIComponent(S.sources.montage[shot.src])}&quality=original`;
   if (!v.src.endsWith(url)) v.src = url;
   v.muted = true;
   v.loop = false;
@@ -1435,12 +1633,13 @@ function openSource(id) {
   v.ontimeupdate = () => { if (v.currentTime >= shot.end) v.currentTime = shot.start; };
   v.play().catch(() => {});
   $('stage').classList.add('src');
+  $('previewState').hidden = true;
   $('mode').style.display = 'block';
   $('mode').textContent = `Source shot · ${(shot.end - shot.start).toFixed(1)}s`;
   $('srcbar').style.display = 'flex';
   $('blank').style.display = 'none';
   $('srcOut').textContent = doc.curation.exclude.includes(id) ? 'Bring back' : 'Remove';
-  $('srcUse').textContent = pick0 && pick0.kind === 'slot' ? `Put in slot ${pick0.i + 1}` : 'Use in montage';
+  $('srcUse').textContent = pick0?.kind === 'seq' ? 'Replace selected clip' : pick0?.kind === 'slot' ? `Put in slot ${pick0.i + 1}` : 'Add at playhead';
   draw();
 }
 
@@ -1459,6 +1658,7 @@ const uniq = a => [...new Set(a)];
 const without = (a, id) => a.filter(x => x !== id);
 
 function useShot(id, slot) {
+  if (doc.seq && window.EETimeline) return EETimeline.addShot(id, { replaceId: pick0 && pick0.kind === 'seq' ? pick0.id : undefined });
   const ids = slots().map(s => s.id);
   change(d => {
     d.curation.exclude = without(d.curation.exclude, id);
@@ -1472,6 +1672,7 @@ function useShot(id, slot) {
 }
 function removeShot(id) {
   change(d => {
+    if (d.seq) d.seq.video = d.seq.video.map(track => track.filter(c => c.shot !== id));
     d.curation.pin = without(d.curation.pin, id);
     d.curation.exclude = uniq([...d.curation.exclude, id]);
     if (d.curation.hero === id) d.curation.hero = null;
@@ -1479,6 +1680,7 @@ function removeShot(id) {
 }
 function restoreShot(id) { change(d => { d.curation.exclude = without(d.curation.exclude, id); }); }
 function finalShot(id) {
+  if (doc.seq && window.EESequence) return EESequence.finalShot(id);
   change(d => { d.curation.hero = id; d.curation.exclude = without(d.curation.exclude, id); });
 }
 function moveSlot(from, to) {
@@ -1493,6 +1695,7 @@ function moveSlot(from, to) {
 
 // ---------- drawing ----------
 function draw() {
+  if (window.EESequence) EESequence.project();
   status();
   $('name').textContent = $('compName').textContent = $('tlTab').textContent = doc.plan.title;
   document.title = `${doc.plan.title} · easyedit`;
@@ -1605,9 +1808,9 @@ function drawInfo() {   // the header of the Project panel: what is selected, or
   }
 }
 
-function total() { return S.timeline.frames ? S.timeline.frames / S.timeline.fps : player ? player.total : 30; }
+function total() { if (doc?.seq && window.EEPreview) return Math.max(0.1, EEPreview.total()); return S.timeline.frames ? S.timeline.frames / S.timeline.fps : player ? player.total : 30; }
 
-const HEADW = 292;
+let HEADW = 292;
 const LAB = { text: '#b53838', adj: '#a9a9ca', hero: '#e4d84c', speech: '#a9cbc7', audio: '#b3c7b3',
               shots: ['#677de0', '#e7c19e', '#4aa44c', '#f46dd6', '#3da2a5', '#e8920d', '#a89677'] };
 const ink = c => { const n = parseInt(c.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 140 ? '#111' : '#f4f4f4'; };
@@ -1627,6 +1830,9 @@ function drawTimeline() {
   $('stairBtn').className = stair ? 'on' : '';
   $('stairBtn').innerHTML = `${ic('stair')}${stair ? 'One layer per shot' : 'Compact'}`;
   $('stairBtn').title = stair ? 'Every shot has its own layer. Click for the compact timeline.' : 'All shots sit on one layer. Click to give every shot its own layer.';
+  $('drop').hidden = !!doc.seq;
+  if (doc.seq && window.EETimeline) return EETimeline.draw(W);
+  if (S.seqSaved && S.seq) return drawSequenceTimeline(W);
   if (T.error) { $('layers').innerHTML = ''; return; }
   // the selection always holds the layer that was clicked last
   if (pick.kind !== 'slot') multi.clear(); else multi.add(pick.i);
@@ -1658,8 +1864,10 @@ function drawTimeline() {
     const color = c.hero ? LAB.hero : LAB.shots[(shot ? shot.src : 0) % LAB.shots.length];
     const key = c.hero ? 'data-hero="1"' : `data-slot="${i}"`;
     const name = c.hero ? 'Final shot' : `Shot ${i + 1}`;
+    const label = String(c.hero ? 'Final' : stair ? name : i + 1);
+    const fits = (b - a) * pps >= label.length * 6.5 + 10;   // a clipped "1" on shot 16 would say the wrong thing: no label instead
     const clip = `<div class="clip ${sel ? 'sel' : ''}" ${key} data-id="${esc(c.id)}"
-      style="${at(a, b)};${tint(color)}" title="${name}"><b>${c.hero ? 'Final' : stair ? name : i + 1}</b>${opts[c.id] ? '<u title="This shot has its own effects"></u>' : ''}<s class="trim" data-trim="${c.hero ? 'hero' : i}" title="Drag to trim. It snaps to the beat; hold Alt to place it freely."></s></div>`;
+      style="${at(a, b)};${tint(color)}" title="${name}">${fits ? `<b>${label}</b>` : ''}${opts[c.id] ? '<u title="This shot has its own effects"></u>' : ''}<s class="trim" data-trim="${c.hero ? 'hero' : i}" title="Drag to trim. It snaps to the beat; hold Alt to place it freely."></s></div>`;
     if (!stair && !c.hero) { flat.push(clip); continue; }
     rows.push({ attrs: `${key} data-id="${esc(c.id)}"`, sel, drag: !c.hero, eye: c.hero ? '' : c.id, thumb: shot && shotThumb(shot), icon: 'video',
       name, color, fx: !!opts[c.id], dur: tc(b - a), bars: clip });
@@ -1691,7 +1899,27 @@ function drawTimeline() {
     : slot ? `Shot ${pick.i + 1} · ${tc((slot.end - slot.start) / fps)}`
     : pick.kind === 'hero' ? 'Final shot · choose another with the star on any shot'
     : pick.kind === 'speech' ? 'Speech · change where it starts and ends in the Speech tab'
-    : `${slots().length} beat cuts${S.music.bpm ? ` · ${Math.round(S.music.bpm)} bpm` : ''}`;
+    : `${slots().length} beat cuts${S.music.bpm ? ` · ${Math.round(S.music.bpm)} bpm` : ''}${T.repeats ? ` · ${T.repeats} show a shot again` : ''}`;
+  const again = !many && !slot && !['hero', 'speech'].includes(pick.kind) && multiLines.size <= 1 && T.repeats;
+  $('sel').classList.toggle('warn', !!again);
+  $('sel').title = again ? `There are fewer usable shots than beat cuts, so ${T.repeats} cut${T.repeats > 1 ? 's' : ''} show a shot again, in a new order and from another moment of it. For no repeats, add footage in the Footage tab, bring removed shots back, or cut slower in the Beat tab.` : '';
+}
+
+function drawSequenceTimeline(width) {
+  const seq = S.seq, rows = [];
+  for (const [kind, letter, color] of [['video', 'V', LAB.shots[0]], ['audio', 'A', LAB.audio]]) {
+    for (const [i, clips] of (seq[kind] || []).entries()) {
+      const track = `${letter}${i + 1}`, mutedTrack = (seq.off || []).includes(track);
+      const bars = clips.map(c => `<button class="seqclip" data-time="${c.at}" style="left:${c.at * pps}px;width:${Math.max(3, c.dur * pps - 1)}px;${tint(color)}" title="${esc(c.src)} · ${clock(c.at)}–${clock(c.at + c.dur)}">${esc(c.kind)} · ${esc(c.src.split(':').slice(1).join(':'))}</button>`).join('');
+      rows.push(`<div class="lrow${mutedTrack ? ' seqoff' : ''}"><div class="lhead"><span class="c1"></span><i class="lab" style="background:${color}"></i><span class="nm">${track} · ${kind === 'video' ? 'Video' : 'Audio'}${mutedTrack ? ' · off' : ''}</span></div><div class="lbars" style="width:${width}px">${bars}</div></div>`);
+    }
+  }
+  $('layers').innerHTML = rows.join('');
+  for (const b of $('layers').querySelectorAll('[data-time]')) b.onclick = e => { e.stopPropagation(); seek(+b.dataset.time); };
+  for (const id of ['mvl', 'mvr', 'rm', 'del']) $(id).hidden = true;
+  $('sel').textContent = 'Arranged timeline · preview and export';
+  $('sel').title = 'Your saved tracks are preserved. Use beat layout to edit the shot order and timing with beat controls.';
+  moveHead(false); drawMarks();
 }
 
 function drawWave(width) {
@@ -1701,7 +1929,7 @@ function drawWave(width) {
   const g = c.getContext('2d');
   g.clearRect(0, 0, w, H);
   const split = (S.timeline.speechFrames || 0) / (S.timeline.fps || 60) * pps;
-  if (wave && wave.peaks.length) {
+  if (wave && wave.peaks && wave.peaks.length) {   // a soundtrack that could not be read draws no wave, not a broken timeline
     for (let x = 0; x < w; x++) {
       const a = Math.floor(x / pps * wave.rate), b = Math.max(a + 1, Math.floor((x + 1) / pps * wave.rate));
       let m = 0;
@@ -1727,7 +1955,7 @@ function moveHead(follow) {
 function drawCaptions() {
   const P = doc.plan.palette;
   $('caps').innerHTML = doc.quote.lines.map((line, l) =>
-    `<div class="cap ${pick.kind === 'word' && pick.l === l ? 'now' : ''}"><time>${tc(Math.max(0, line[0].start - (S.timeline.speechStart || 0)))}</time><div>${
+    `<div class="cap ${pick.kind === 'word' && pick.l === l ? 'now' : ''}"><time>${tc(window.EESequence ? EESequence.wordTime(line[0]) : Math.max(0, line[0].start - (S.timeline.speechStart || 0)))}</time><div>${
       line.map((w, i) => `<span class="w ${pick.kind === 'word' && pick.l === l && pick.w === i ? 'sel' : ''}" role="button" tabindex="0" aria-label="Caption word ${esc(w.text)}" data-l="${l}" data-w="${i}"
         style="color:${w.role ? P[w.role] || WHITE : WHITE}">${esc(w.text)}</span>`).join('')}</div></div>`).join('');
 }
@@ -1811,6 +2039,12 @@ const tiles = (items, on, attr) => items.map(([v, name, icon]) =>
   `<button class="${on(v) ? 'on' : ''}" data-${attr}="${v}">${ic(icon)}${name}</button>`).join('');
 
 function toolShot() {   // the timeline shot the Tools tab is working on
+  if (pick.kind === 'seq' && window.EETimeline) {
+    const c = EETimeline.selected();
+    if (!c || !doc.seq.video.some(track => track.includes(c))) return null;
+    const fps = doc.settings.fps;
+    return {id:c.id, shot:c.shot, name:c.kind === 'hero' ? 'Final shot' : c.src.split(':').slice(1).join(':'), cut:{start:c.at*fps,end:(c.at+c.dur)*fps}};
+  }
   if (pick.kind === 'slot') { const s = slots()[pick.i]; return s ? { id: s.id, name: `Shot ${pick.i + 1}`, cut: s } : null; }
   if (pick.kind === 'hero') { const s = (S.timeline.shots || []).find(x => x.hero); return s ? { id: s.id, name: 'Final shot', cut: s } : null; }
   return null;
@@ -1821,6 +2055,7 @@ function prune(shots, id) {   // a shot with nothing set leaves no entry behind
   if (!Object.keys(o).length) delete shots[id];
 }
 function shotOpt(fn) {
+  if (pick.kind === 'seq' && window.EESequence) return EESequence.editOptions([pick.id], fn);
   const t = toolShot();
   if (t) change(d => { fn(d.curation.shots[t.id] ||= {}); prune(d.curation.shots, t.id); });
 }
@@ -1868,6 +2103,11 @@ function kitFilter() {   // search box and category chips over the preset tiles
   $('kitNone').hidden = shown > 0;
 }
 function kitIds() {   // the shots a toolkit click lands on
+  if (doc.seq) {
+    const clips = doc.seq.video.flat();
+    if (kitScope === 'sel') return pick.kind === 'seq' ? [pick.id] : [];
+    return clips.filter((c,i) => kitScope === 'all' || i % +kitScope === 0).map(c => c.id);
+  }
   const all = uniq(slots().map(s => s.id)), t = toolShot();
   if (kitScope === 'all') return all;
   if (kitScope === 'sel') return selSlots().length > 1 ? uniq(selSlots().map(i => slots()[i].id)) : t ? [t.id] : [];
@@ -1877,18 +2117,19 @@ function kitIds() {   // the shots a toolkit click lands on
 function kitOpt(fn) {
   const ids = kitIds();
   if (!ids.length) return toast('Click a shot layer in the timeline first, or set Apply to: All shots.', true);
+  if (doc.seq && window.EESequence) return EESequence.editOptions(ids, fn);
   change(d => { for (const id of ids) { fn(d.curation.shots[id] ||= {}); prune(d.curation.shots, id); } });
   if (ids.length > 1) toast(`Applied to ${ids.length} shots.`);
 }
 function kitFx(f) {
-  const ids = kitIds(), has = ids.length && ((doc.curation.shots[ids[0]] || {}).fx || []).includes(f);
+  const ids = kitIds(), has = ids.length && ((window.EESequence ? EESequence.options(ids[0]) : doc.curation.shots[ids[0]] || {}).fx || []).includes(f);
   kitOpt(o => { o.fx = (o.fx || []).filter(x => x !== f); if (!has) o.fx.push(f); });
 }
 const myPresets = () => { try { return JSON.parse(ls('presets') || '[]'); } catch { return []; } };
 const presetAbout = o => [o.move && MOVE_NAMES[o.move], o.ease && EASE_NAMES[o.ease], ...(o.fx || []).map(f => FX_NAMES[f]),
   o.grade && GRADE_NAMES[o.grade], o.ramp && `ramp ${o.ramp}`, o.speed && `${o.speed}×`].filter(Boolean).join(' · ');
 function savePreset() {
-  const t = toolShot(), o = t && doc.curation.shots[t.id];
+  const t = toolShot(), o = t && (window.EESequence ? EESequence.options(t.id) : doc.curation.shots[t.id]);
   if (!o || !Object.keys(o).length) return toast('Select a shot that has a move or effects on it first.', true);
   const list = myPresets(), { slip, ...keep } = o;
   list.push({ name: $('presetName').value.trim() || `Preset ${list.length + 1}`, o: keep });
@@ -1973,13 +2214,13 @@ function drawKit(t, o, still) {
 }
 
 function drawTools() {
-  const t = toolShot(), o = t ? doc.curation.shots[t.id] || {} : {};
+  const t = toolShot(), o = t ? window.EESequence ? EESequence.options(t.id) : doc.curation.shots[t.id] || {} : {};
   $('fxhead').innerHTML = `${esc(doc.plan.title)} &bull; <b>${t ? t.name : 'No layer selected'}</b>`;
   $('fxTabName').textContent = t ? t.name : '';
   $('shotHint').hidden = !!t;
   $('shotBody').hidden = !t;
   if (t) {
-    const shot = S.shots.find(s => s.id === t.id);
+    const shot = S.shots.find(s => s.id === (t.shot || t.id));
     if (shot) { $('shotThumb').style.visibility = ''; $('shotThumb').src = shotThumb(shot); }
     $('shotTitle').textContent = t.name;
     $('shotMeta').textContent = `${tc((t.cut.end - t.cut.start) / S.timeline.fps)} on screen${shot ? ` · ${(shot.end - shot.start).toFixed(1)}s of source` : ''}`;
@@ -1994,7 +2235,7 @@ function drawTools() {
     $('slipv').textContent = fmtVal('slip', $('slip').value);
     drawTf(o);
   }
-  const shotNow = t && S.shots.find(x => x.id === t.id);
+  const shotNow = t && S.shots.find(x => x.id === (t.shot || t.id));
   drawKit(t, o, shotNow ? shotThumb(shotNow) : `${API}/thumb?k=speech&i=${S.quote.clip}&t=${(S.quote.start + 1).toFixed(2)}`);
   const s = doc.settings, L = doc.plan.look;
   $('rates').innerHTML = seg([['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], v => s.cut_rate === v, 'rate');
@@ -2038,8 +2279,10 @@ function drawLook() {
 }
 
 // ---------- styles: a look, beat tools and an effect pattern in one step ----------
+// everything a style sets, at its default: a style starts from here, so the last one leaves nothing behind
 const BASE_LOOK = { grain: 0.05, vignette: 0.42, bars: 0, barsDrop: 0, pulse: 1, flash: 1, shake: 0, blur: 1, bloom: 0.3, lens: 0.25,
-                    sharpen: 0.2, dof: 0, pop: 0, parallax: 0, dust: 0, flicker: 0 };
+                    sharpen: 0.2, dof: 0, pop: 0, parallax: 0, dust: 0, flicker: 0, capBehind: 0, capSize: 64, capY: 0.61, capGlow: 1,
+                    capAnim: 'rise' };
 const STYLES = {
   velocity: { name: 'Velocity', about: 'Speed ramps, hard beat hits, impact frames, bars on the drop',
     grade: 'cinematic', depth: false, settings: { velocity: true, sfx: 0.85 },
@@ -2060,7 +2303,7 @@ const STYLES = {
     look: { grain: 0.12, flicker: 0.6, dust: 0.5, bloom: 0.4, sharpen: 0, blur: 0.8 },
     shot: i => ({ fx: i % 4 === 0 ? ['vhs', 'glitch'] : ['vhs'] }) },
   clean: { name: 'Clean', about: 'Back to the plain easyedit look, no per-shot effects',
-    grade: null, depth: null, settings: {}, look: { capBehind: 0 }, shot: () => null },
+    grade: null, depth: null, settings: { velocity: true, sfx: 0.7 }, look: {}, shot: () => null },
 };
 function applyStyle(id) {
   const st = STYLES[id];
@@ -2077,9 +2320,17 @@ function applyStyle(id) {
       const o = c.hero ? null : st.shot(n++);
       if (o) opts[c.id] = o;
     }
-    d.curation.shots = opts;
+    if (d.seq) {
+      let i = 0;
+      for (const c of d.seq.video.flat()) {
+        if (c.kind === 'speech') continue;
+        c.opts = c.kind === 'hero' ? {} : st.shot(i++) || {};
+        c.ramp = d.settings.velocity ? ['in','out','hit'][i % 3] : null;
+        c.speed = 1; delete c.rspan;
+      }
+    } else d.curation.shots = opts;
   });
-  toast(`${st.name} applied. Press Apply changes to see the cut${st.depth ? ' and depth' : ''}.`);
+  toast(`${st.name} applied.${st.depth ? ' Render preview to see depth effects.' : ''}`);
 }
 
 // ---------- events: bin ----------
@@ -2098,7 +2349,7 @@ $('shots').onclick = e => {
   if (d.back) return restoreShot(d.back);
   const tile = e.target.closest('.shot');
   if (!tile) return;
-  pick0 = pick.kind === 'slot' ? pick : pick0;
+  pick0 = ['slot','seq'].includes(pick.kind) ? pick : pick0;
   openSource(tile.dataset.id);
 };
 $('shots').ondragstart = e => {
@@ -2107,6 +2358,11 @@ $('shots').ondragstart = e => {
 };
 $('srcUse').onclick = () => {
   if (pick.kind === 'clip') return addClip(pick.item, 'montage');
+  if (doc.seq && window.EETimeline) {
+    const id = pick.id, replaceId = pick0?.kind === 'seq' ? pick0.id : undefined;
+    closeSource(); pick0 = null;
+    return EETimeline.addShot(id, {replaceId});
+  }
   const id = pick.id, slot = pick0 && pick0.kind === 'slot' ? pick0.i : null; closeSource(); pick = { kind: null }; pick0 = null; useShot(id, slot);
 };
 $('srcFinal').onclick = () => {
@@ -2209,6 +2465,7 @@ function drawLib() {
         <small class="q" title="${esc([facts, use].filter(Boolean).join(' · '))}">${facts}${use ? `<span> · ${use}</span>` : ''}</small>
       </div>
       <div class="acts">
+        ${c.exists ? `<button data-insert="${n}" title="Add this source at the playhead">Add to timeline</button>` : ''}
         ${c.page ? `<a class="ib" href="${esc(c.page)}" target="_blank" rel="noreferrer" title="Open where it came from">${ic('open')}</a>` : ''}
         ${c.exists && roles.includes('speech') && !roles.includes('montage') ? `<button class="icon" data-also="${n}" title="Cut shots from this clip too">${ic('plus')}</button>` : ''}
         ${roles.some(r => r !== 'music') ? `<button class="icon" data-rm="${n}" title="Remove from this edit. Its file stays on this computer.">${ic('x')}</button>` : ''}
@@ -2261,7 +2518,8 @@ async function find() {
   drawFind();
 }
 
-function openClip(item) {   // watch a found clip in the viewer before adding it
+function openClip(item) {
+  if (matchMedia('(max-width: 1000px)').matches) showPanel('viewer');   // watch a found clip in the viewer before adding it
   if (player) player.pause();
   pick = { kind: 'clip', item };
   const v = $('srcv');
@@ -2272,6 +2530,7 @@ function openClip(item) {   // watch a found clip in the viewer before adding it
   v.src = /^https?:/.test(item.preview) ? item.preview : `${API}/${item.preview}`;
   v.play().catch(() => {});
   $('stage').classList.add('src');
+  $('previewState').hidden = true;
   $('mode').style.display = 'block';
   $('mode').textContent = `${siteOf(item.site).name} clip`;
   $('srcbar').style.display = 'flex';
@@ -2295,7 +2554,7 @@ async function removeClip(c) {
   if (running) return toast('Wait for the current run to finish.', true);
   const role = (c.roles.find(r => r.role === 'montage') || c.roles.find(r => r.role === 'speech')).role;
   if (!confirm(`Remove “${c.title}” from this edit's ${role === 'speech' ? 'speech clips' : 'shots'}?\n\nIts file stays on this computer, so you can add it back from the Footage tab.`)) return;
-  while (saving) await new Promise(r => setTimeout(r, 100));
+  if (!await save()) return;
   const res = await post('clips/remove', { path: c.path, role }).catch(() => ({ error: 'The easyedit app did not answer.' }));
   if (res.error) return toast(res.error, true);
   L = res;
@@ -2373,7 +2632,7 @@ $('histList').onclick = async e => {
   $('histMenu').classList.remove('open');
   if (running) return toast('Wait for the current run to finish.', true);
   if (!confirm('Go back to this version? Captions, shot choices, look and lengths return to how they were then. The edit as it is now is kept in History too.')) return;
-  while (saving) await new Promise(r => setTimeout(r, 100));
+  if (!await save()) return;
   const res = await post('history/back', { id: b.dataset.id }).catch(() => ({ error: 'The easyedit app did not answer.' }));
   if (res.error) return toast(res.error, true);
   S = res;
@@ -2407,6 +2666,10 @@ $('hits').onclick = e => {
 };
 $('lib').onclick = e => {
   const d = (e.target.closest('button') || {}).dataset || {};
+  if (d.insert != null && window.EETimeline) {
+    const c = L.clips[+d.insert], role = c.roles.find(r => r.role === 'montage') || c.roles[0];
+    return EETimeline.addMedia(`${role.role}:${c.name}`, {duration:c.duration,linkAudio:role.role !== 'music'});
+  }
   if (d.rm != null) return removeClip(L.clips[+d.rm]);
   if (d.restore) return run('restore', 'Downloading the footage again');
   if (d.back != null) { const k = L.kept[+d.back]; return addClip({ site: 'file', url: k.path, title: k.title }, k.was === 'speech' ? 'speech' : 'montage'); }
@@ -2517,6 +2780,7 @@ function deleteLines(idx) {
   toast(`Deleted ${gone.size} caption line${gone.size > 1 ? 's' : ''}.`);
 }
 function deleteSelection() {
+  if (pick.kind === 'seq' && window.EETimeline) return EETimeline.remove();
   if (pick.kind === 'slot') { if (PREFS.deleteMode === 'swap') { const ids = selSlots().map(i => slots()[i].id); pick = { kind: null }; multi.clear(); return change(d => { d.curation.pin = d.curation.pin.filter(x => !ids.includes(x)); d.curation.exclude = uniq([...d.curation.exclude, ...ids]); }); } return deleteShots(selSlots()); }
   if (pick.kind === 'word' && selFrom === 'tl') return deleteLines([...new Set([...multiLines, pick.l])]);
   if (pick.kind === 'word') return $('wdel').click();
@@ -2525,6 +2789,7 @@ function deleteSelection() {
   if (pick.kind === 'speech') return toast('The speech cannot be deleted. Drag its ends to trim it.', true);
 }
 function splitAtHead() {   // a new cut at the playhead; the best unused shot takes the second half
+  if (doc.seq && window.EETimeline) return EETimeline.split();
   const fps = S.timeline.fps, sl = slots();
   const i = sl.findIndex(s => now * fps > s.start + 0.1 * fps && now * fps < s.end - 0.1 * fps);
   if (i < 0) return toast('Put the playhead inside a montage shot to split it.', true);
@@ -2540,12 +2805,13 @@ function splitAtHead() {   // a new cut at the playhead; the best unused shot ta
 function copyFx() {
   const t = toolShot();
   if (!t) return;
-  const { slip, ...keep } = doc.curation.shots[t.id] || {};
+  const { slip, ...keep } = window.EESequence ? EESequence.options(t.id) : doc.curation.shots[t.id] || {};
   fxClip = structuredClone(keep);
   toast(Object.keys(keep).length ? 'Effects copied.' : 'This shot has no effects to copy.');
 }
 function pasteFx() {
   if (!fxClip) return;
+  if (pick.kind === 'seq' && window.EESequence) return EESequence.editOptions([pick.id], o => Object.assign(o, structuredClone(fxClip)));
   const ids = pick.kind === 'hero' ? [toolShot().id] : selSlots().map(i => slots()[i].id);
   if (!ids.length) return;
   change(d => { for (const id of ids) { const o = d.curation.shots[id] ||= {}; for (const k of ['move', 'ease', 'fx', 'ramp', 'speed', 'grade']) delete o[k]; Object.assign(o, structuredClone(fxClip)); prune(d.curation.shots, id); } });
@@ -2870,7 +3136,8 @@ $('reset').onclick = () => {
 };
 $('stairBtn').onclick = () => { stair = !stair; ls('stair', stair ? '1' : '0'); drawTimeline(); };
 function setZoom() {
-  const fit = ($('tlscroll').clientWidth - HEADW - 2) / total();
+  HEADW = matchMedia('(max-width: 700px)').matches ? 140 : 292;
+  const fit = Math.max(80, $('tlscroll').clientWidth - HEADW - 2) / Math.max(1, total());
   pps = fit * Math.pow(8, +$('zoom').value / 100);
   drawTimeline();
 }
@@ -2925,9 +3192,12 @@ for (const [btn, cls] of [['safeBtn', 'safe'], ['gridBtn', 'thirds']]) {
   $(btn).onclick = () => $(btn).classList.toggle('on', $('guides').classList.toggle(cls));
 }
 $('viewMode').onclick = () => { binList = !binList; ls('bin', binList ? 'list' : 'grid'); drawBin(); };
-function showLeft(name) {
+function showLeft(name) {   // Songs is the Footage page searching the Songs site
+  const want = name === 'songs' ? 'songs' : name === 'clips' && site === 'songs' ? 'youtube' : null;
+  if (want && L) { site = want; hits = null; finding = false; find(); }
   [...$('ltabs').children].forEach(b => b.classList.toggle('on', b.dataset.lt === name));
-  for (const page of ['project', 'kit', 'fx', 'clips']) $(`lt-${page}`).classList.toggle('on', name === page);
+  for (const page of ['project', 'kit', 'fx', 'clips']) $(`lt-${page}`).classList.toggle('on', (name === 'songs' ? 'clips' : name) === page);
+  if (name === 'songs') { $('sites').closest('details').open = true; $('sites').closest('details').scrollIntoView({ block: 'start' }); $('findQ').focus({ preventScroll: true }); }
 }
 $('ltabs').onclick = e => { const b = e.target.closest('button'); if (b) showLeft(b.dataset.lt); };
 
@@ -2956,7 +3226,7 @@ $('caps').onclick = e => {
   const w = e.target.closest('.w');
   if (!w) return;
   pick = { kind: 'word', l: +w.dataset.l, w: +w.dataset.w };
-  seek(word().start - S.timeline.speechStart + 0.08);
+  seek((window.EESequence ? EESequence.wordTime(word()) : word().start - S.timeline.speechStart) + 0.08);
   draw();
 };
 $('wtext').oninput = () => {
@@ -3014,7 +3284,7 @@ $('script').onclick = async e => {
   if (res.error) return toast(res.error, true);
   pick = { kind: null };
   $('clipsel').dataset.show = clip;
-  change(d => { d.quote = { clip: res.clip, lines: res.lines }; });
+  change(d => { if (d.seq && window.EESequence) EESequence.setSpeech(d,res); else d.quote = { clip: res.clip, lines: res.lines }; });
 };
 
 // ---------- events: tools + look ----------
@@ -3075,13 +3345,17 @@ onBtn('capMotions', d => change(x => {
 }));
 onBtn('capStyles', d => change(x => { x.plan.look.capStyle = d.ts; }));
 onBtn('customSeg', d => change(x => { x.plan.look.capAnim = d.canim || 'rise'; }));
-$('srt').onclick = () => {
+$('srt').onclick = async () => {
+  if (!await save()) return;
   const start = S.timeline.speechStart || 0, lines = doc.quote.lines;
   const stamp = t => { const ms = Math.max(0, Math.round(t * 1000)); return `${pad2(Math.floor(ms / 3600000))}:${pad2(Math.floor(ms / 60000) % 60)}:${pad2(Math.floor(ms / 1000) % 60)},${String(ms % 1000).padStart(3, '0')}`; };
-  const text = lines.map((line, i) => {
-    const a = line[0].start - start, b = (lines[i + 1] ? lines[i + 1][0].start : line[line.length - 1].end + 0.5) - start;
-    return `${i + 1}\n${stamp(a)} --> ${stamp(b)}\n${line.map(w => w.text).join(' ')}\n`;
-  }).join('\n');
+  const captions = doc.seq && window.EEPreview ? EEPreview.captions() : S.seqSaved ? S.sequenceCaptions || [] : lines.map((line, i) => ({
+    start: line[0].start - start,
+    end: (lines[i + 1] ? lines[i + 1][0].start : line[line.length - 1].end + 0.5) - start,
+    words: line,
+  }));
+  if (!captions.length) return toast('There are no audible captions to export.', true);
+  const text = captions.map((caption, i) => `${i + 1}\n${stamp(caption.start)} --> ${stamp(caption.end)}\n${caption.words.map(w => w.text).join(' ')}\n`).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
   a.download = `${slug}.srt`;
@@ -3122,7 +3396,7 @@ document.querySelector('.ideas').onclick = e => { if (e.target.tagName === 'BUTT
 $('askGo').onclick = async () => {
   const request = $('ask').value.trim();
   if (!request) return;
-  while (saving) await new Promise(r => setTimeout(r, 100));
+  if (!await save()) return;
   $('askGo').disabled = true;
   $('askState').textContent = 'Thinking…';
   const res = await post('ask', { request }).catch(() => ({ error: 'The easyedit app did not answer.' }));
@@ -3138,6 +3412,7 @@ $('askGo').onclick = async () => {
     const all = d.quote.lines.flat();
     for (const [i, role] of res.emphasis || []) if (all[i]) all[i].role = role;
   });
+  if (res.montage_length && doc.seq) await EESequence.autoCut(null, false);
   $('notes').insertAdjacentHTML('afterbegin', `<div class="note">${esc(res.note || 'Done.')}</div>`);
 };
 
@@ -3151,54 +3426,83 @@ function busy(title, stage, pct) {
 }
 
 async function run(mode, label, body) {
-  if (running) return;
-  while (saving) await new Promise(r => setTimeout(r, 100));
-  const res = await post(mode === 'clip' ? 'clips/add' : mode === 'restore' ? 'clips/restore' : 'run', body || { mode });
-  if (res.error) { toast(res.error, true); return status(res.error); }
-  if (player) player.pause();
-  running = label;
+  if (!S || running || starting) return false;
+  starting = true;
   status();
-  busy(label, 'starting', 2);
-  for (;;) {
-    await new Promise(r => setTimeout(r, 1200));
-    const p = await fetch(`/api/log/${slug}`).then(r => r.json()).catch(() => null);
-    if (!p) continue;
-    const pct = Math.round((p.progress || 0) * 100);
-    document.querySelector('#runbar i').style.width = `${pct}%`;
-    running = `${label}: ${p.stage}`;
+  try {
+    if (!await save()) return false;
+    const res = await post(mode === 'clip' ? 'clips/add' : mode === 'restore' ? 'clips/restore' : 'run', body || { mode });
+    if (res.error) { toast(res.error, true); status(res.error); return false; }
+    if (player) player.pause();
+    running = label;
     status();
-    busy(label, `${p.stage} · ${pct}%`, pct);
-    if (!p.running) {
+    busy(label, 'starting', 2);
+    let misses = 0;
+    for (;;) {
+      await new Promise(r => setTimeout(r, 1200));
+      const p = await fetch(`/api/log/${slug}`).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!p) {
+        misses++;
+        busy(label, 'Connection lost · waiting to reconnect…', 0);
+        if (misses >= 25) {
+          toast('Progress is unavailable. Check the project page before starting another run.', true);
+          return false;
+        }
+        continue;
+      }
+      misses = 0;
+      const pct = Math.round((p.progress || 0) * 100);
+      document.querySelector('#runbar i').style.width = `${pct}%`;
+      running = `${label}: ${p.stage}`;
+      status();
+      busy(label, `${p.stage} · ${pct}%`, pct);
+      if (p.running) continue;
       const ok = /done/.test(p.stage);
-      await load();
+      if (!await load()) return false;
+      doc = pickDoc(S);
       wave = await fetch(`${API}/wave`).then(r => r.json()).catch(() => null);
-      running = false;
-      document.querySelector('#runbar i').style.width = '0';
-      busy(null);
-      if (mode === 'clip') { if (hits && ok && body.role !== 'music') hits.forEach(h => { if (h === body.item) h.added = true; }); await loadLib(); }
-      else { if (mode === 'restore') await loadLib(); loadPreview(); }
-      draw();
-      if (!ok) { const why = (p.error || 'That run stopped early. The log is on the main page.').replace(/^error:\s*/, ''); status(why); toast(why, true); }
-      else if (mode === 'clip') toast(body.role === 'speech' ? 'Clip added. Pick its words in the Speech tab.' : body.role === 'music' ? 'The song is changed. Press Apply changes to recut to its beat.' : 'Clip added. Its shots are in the bin. Press Apply changes to recut.');
+      if (mode === 'clip') {
+        if (hits && ok && body.role !== 'music') hits.forEach(h => { if (h === body.item) h.added = true; });
+        await loadLib();
+      } else { if (mode === 'restore') await loadLib(); loadPreview(); }
+      if (!ok) {
+        const why = (p.error || 'That run stopped early. The log is on the main page.').replace(/^error:\s*/, '');
+        toast(why, true);
+      } else if (mode === 'clip') toast(body.role === 'speech' ? 'Clip added. Pick its words in the Speech tab.' : body.role === 'music' ? 'Song changed. Auto cut to beat rearranges the montage.' : 'Clip added. Drag its shots onto the timeline or choose Add to timeline in Footage.');
       else if (mode === 'restore') toast('The footage is back on this computer.');
       else if (mode === 'build' || mode === 'refetch') toast(mode === 'build' ? 'Recut. The preview matches your changes.' : 'New footage is in. Pick your shots again.');
-      else { toast('Exported.'); if (S.built.video) window.open(S.built.video, '_blank'); }
-      return;
+      else { toast('Exported. Use Watch last export to play or download it.'); }
+      return ok;
     }
+  } finally {
+    starting = false;
+    running = false;
+    document.querySelector('#runbar i').style.width = '0';
+    busy(null);
+    if (S && doc) draw();
   }
 }
-$('apply').onclick = $('blankApply').onclick = () => run('build', 'Cutting');
+// footage that is gone from this computer comes back first, into the same places, so every shot still means the same thing
+async function withFootage(mode, label) {
+  if (!S || running || starting) return false;
+  if (S.built.missing) {
+    if (!await run('restore', 'Downloading the footage again')) return false;
+    if (S.built.missing) return false;   // run() already said what could not be downloaded
+  }
+  return run(mode, label);
+}
+$('apply').onclick = $('blankApply').onclick = () => withFootage('build', 'Cutting');
 $('refetch').onclick = () => {
   if (confirm('Look for sharper footage of this film and cut from it? This downloads up to a few hundred MB and takes several minutes. Your shot choices are reset, because the shots will be different.')) {
     pick = { kind: null };
-    run('refetch', 'Finding better footage').then(() => { doc = pickDoc(S); past = []; future = []; draw(); });
+    run('refetch', 'Finding better footage').then(ok => { if (ok) { past = []; future = []; draw(); } });
   }
 };
 $('export').onclick = e => { e.stopPropagation(); $('exportMenu').classList.toggle('open'); };
 $('exportMenu').querySelector('div').onclick = e => {
   const b = e.target.closest('button');
   $('exportMenu').classList.remove('open');
-  if (b) run(b.dataset.mode, 'Exporting');
+  if (b) withFootage(b.dataset.mode, 'Exporting');
 };
 addEventListener('click', () => $('exportMenu').classList.remove('open'));
 
@@ -3297,7 +3601,7 @@ const CMDS = [
   ['moveDown', 'Move the shot later', 'Editing', ['Ctrl+Alt+ArrowDown'], () => { if (pick.kind === 'slot' && pick.i < slots().length - 1) moveSlot(pick.i, pick.i + 1); }],
   ['copyFx', 'Copy effects', 'Editing', ['Ctrl+C'], () => copyFx()],
   ['pasteFx', 'Paste effects', 'Editing', ['Ctrl+V'], () => pasteFx()],
-  ['clearFx', 'Remove all effects from the selection', 'Editing', ['Ctrl+Shift+E'], () => { const ids = selSlots().map(i => slots()[i].id); if (ids.length) change(d => { for (const id of ids) delete d.curation.shots[id]; }); }],
+  ['clearFx', 'Remove all effects from the selection', 'Editing', ['Ctrl+Shift+E'], () => { if (pick.kind === 'seq') return EESequence.editOptions([pick.id], o => { for (const k of Object.keys(o)) delete o[k]; }); const ids = selSlots().map(i => slots()[i].id); if (ids.length) change(d => { for (const id of ids) delete d.curation.shots[id]; }); }],
   ['swap', 'Swap the shot for another', 'Editing', [], () => { const s = pick.kind === 'slot' && slots()[pick.i]; if (s) removeShot(s.id); }],
 
   ['propP', 'Show Position', 'Layer', ['P'], () => revealProp('x')],
@@ -3319,7 +3623,7 @@ const CMDS = [
   ['panFx', 'Effect Controls panel', 'Panels', ['F3'], () => showLeft('fx')],
   ['panKit', 'Toolkit panel', 'Panels', ['Ctrl+5'], () => showLeft('kit')],
   ['compSettings', 'Composition settings', 'Panels', ['Ctrl+K'], () => { showTab('look'); const el = $('title'); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } }],
-  ['apply', 'Apply changes', 'App', ['Ctrl+Enter'], () => $('apply').click()],
+  ['apply', 'Render preview', 'App', ['Ctrl+Enter'], () => $('apply').click()],
   ['export', 'Export', 'App', ['Ctrl+M'], () => $('export').click()],
   ['prefs', 'Preferences', 'App', ['Ctrl+,', 'Ctrl+Alt+;'], () => openPrefs()],
   ['escape', 'Close, or let go of the selection', 'App', ['Escape'], () => { $('ctx').style.display = 'none'; const m = document.querySelector('.panel.max, #tl.max'); if (m) return maximise();
@@ -3336,6 +3640,7 @@ function combo(e) {   // the key as written in the list: Ctrl+Shift+D
   return `${e.ctrlKey || e.metaKey ? 'Ctrl+' : ''}${e.altKey ? 'Alt+' : ''}${e.shiftKey ? 'Shift+' : ''}${key}`;
 }
 function onKey(e) {
+  if (!S || !doc || starting || running) return;
   const k = combo(e);
   if (!k) return;
   if (recording) {   // the next key pressed becomes the shortcut
@@ -3449,7 +3754,7 @@ $('prefs').addEventListener('input', e => {
 $('prefsBtn').onclick = () => openPrefs();
 $('ruler').addEventListener('contextmenu', e => { const m = e.target.closest('.mk'); if (!m) return; e.preventDefault(); marks.splice(+m.dataset.mk, 1); saveMarks(); });
 $('ruler').addEventListener('dblclick', e => { if (e.target.closest('.mk')) return; work = null; saveMarks(); });
-{ const ask = $('export').onclick; $('export').onclick = e => PREFS.exportMode === 'ask' ? ask(e) : run(PREFS.exportMode, 'Exporting'); }
+{ const ask = $('export').onclick; $('export').onclick = e => PREFS.exportMode === 'ask' ? ask(e) : withFootage(PREFS.exportMode, 'Exporting'); }
 $('vol').addEventListener('change', () => { PREFS.volume = +$('vol').value; savePrefs(); });
 function playGuard(t, playing) {   // loop, and stay inside the work area when asked to
   if (!playing || !player) return;
@@ -3504,12 +3809,17 @@ const TF_AT = { x: 0, y: 0, s: 100, r: 0 };
 let gizKey = '', gizDrag = null;
 
 function headLayer() {   // what the playhead is on: a montage shot, the final shot, or the speech
+  if (doc.seq && window.EEPreview) {
+    const flat = EEPreview.flatten();
+    const piece = flat.pieces.find(p => now * flat.fps >= p.start && now * flat.fps < p.end);
+    return piece && piece.clip ? {kind:'seq',id:piece.clip.id} : null;
+  }
   const T = S.timeline, f = now * (T.fps || 60), c = (T.shots || []).find(s => f >= s.start && f < s.end);
   if (c) return c.hero ? { kind: 'hero' } : { kind: 'slot', i: slots().indexOf(c) };
   return f < (T.speechFrames || 0) ? { kind: 'speech' } : null;
 }
 function heldLayer() {   // the selected layer, when the playhead is on it
-  if (tool !== 'sel' || !S || !doc || !S.built.exists || $('stage').classList.contains('src') || !$('prefs').hidden) return null;
+  if (tool !== 'sel' || !S || !doc || (!doc.seq && !S.built.exists) || $('stage').classList.contains('src') || !$('prefs').hidden) return null;
   const T = S.timeline, fps = T.fps || 60, f = now * fps;
   if ((pick.kind === 'speech' || pick.kind === 'word') && f < (T.speechFrames || 0)) {
     const look = doc.plan.look || {};
@@ -3517,7 +3827,7 @@ function heldLayer() {   // the selected layer, when the playhead is on it
   }
   const t = toolShot();
   if (!t || f < t.cut.start || f >= t.cut.end) return null;
-  const tf = (doc.curation.shots[t.id] || {}).tf || {};
+  const tf = (window.EESequence ? EESequence.options(t.id) : doc.curation.shots[t.id] || {}).tf || {};
   // a layer that moves has a start and an end: the half of the shot the playhead is in says which one is held
   const end = Object.keys(tf).some(k => k.endsWith('1')) && (f - t.cut.start) / (t.cut.end - t.cut.start) > 0.5;
   const at = k => end ? tf[k + '1'] ?? tf[k] ?? TF_AT[k] : tf[k] ?? TF_AT[k];
@@ -3578,7 +3888,8 @@ function startHold(e, handle) {
       else look.capY = +clamp(g.y + dy / 1080, 0.12, 0.9).toFixed(3);
       return;
     }
-    const o = doc.curation.shots[g.id] ||= {}, tf = { ...(o.tf || {}) }, put = (name, v) => { tf[name + (g.end ? '1' : '')] = v; };
+    const seqClip = doc.seq && doc.seq.video.flat().find(c => c.id === g.id);
+    const o = seqClip ? (seqClip.opts ||= {}) : (doc.curation.shots[g.id] ||= {}), tf = { ...(o.tf || {}) }, put = (name, v) => { tf[name + (g.end ? '1' : '')] = v; };
     if (handle === 'rot') {
       let r = g.r + turn(p) - turn(p0);
       r = ((r + 180) % 360 + 360) % 360 - 180;
@@ -3596,14 +3907,14 @@ function startHold(e, handle) {
       put('x', Math.round(clamp(x, -1920, 1920))); put('y', Math.round(clamp(y, -1080, 1080)));
     }
     o.tf = tf;
-    if (player) player.setShotOpts(doc.curation.shots);   // the picture follows the hand
+    if (doc.seq) pushLive(); else if (player) player.setShotOpts(previewShotOpts());
   };
   const up = () => {
     removeEventListener('mousemove', move); removeEventListener('mouseup', up);
     document.body.classList.remove('holding');
     gizDrag = null; gizKey = '';
     if (!moved) return;
-    if (!g.cap) { const o = doc.curation.shots[g.id]; if (o) { tidyTf(o); prune(doc.curation.shots, g.id); } }
+    if (!g.cap) { const clip = doc.seq && doc.seq.video.flat().find(c => c.id === g.id); const o = clip ? clip.opts : doc.curation.shots[g.id]; if (o) { tidyTf(o); if(!clip) prune(doc.curation.shots, g.id); } }
     commitHeld(before);
   };
   addEventListener('mousemove', move);
@@ -3617,7 +3928,7 @@ $('stagewrap').addEventListener('mousedown', e => {
     if (e.target !== $('glass')) return;
     const on = headLayer();
     if (!on) return;
-    const same = on.kind === pick.kind && (on.kind !== 'slot' || on.i === pick.i) || (on.kind === 'speech' && pick.kind === 'word');
+    const same = on.kind === pick.kind && (on.kind !== 'slot' || on.i === pick.i) && (on.kind !== 'seq' || on.id === pick.id) || (on.kind === 'speech' && pick.kind === 'word');
     if (!same) {
       pick = on;
       if (on.kind === 'slot') multi = new Set([on.i]);
@@ -3630,7 +3941,7 @@ $('stagewrap').addEventListener('mousedown', e => {
 giz.addEventListener('wheel', e => { e.preventDefault(); zoomView(e.deltaY < 0 ? 1 : -1); }, { passive: false });
 giz.addEventListener('dblclick', e => {   // a double-click on the box puts the layer back where it started
   const g = heldLayer();
-  if (g && !g.cap && e.target.closest('.gbox') && (doc.curation.shots[g.id] || {}).tf) shotOpt(o => { delete o.tf; });
+  if (g && !g.cap && e.target.closest('.gbox') && (doc.seq ? EESequence.options(g.id) : doc.curation.shots[g.id] || {}).tf) shotOpt(o => { delete o.tf; });
 });
 function nudge(dx, dy) {   // the selected layer, a pixel at a time; a caption line, a frame at a time
   const g = heldLayer();
@@ -3741,6 +4052,12 @@ for (const [id, icon] of [['undo', 'undo'], ['redo', 'redo'], ['first', 'first']
   ['stairBtn', 'stair'], ['colEye', 'eye'], ['findGo', 'search'], ['pmL', 'list'], ['pmC', 'list'], ['pmP', 'list'], ['pmT', 'list']]) $(id).innerHTML = ic(icon);
 $('tabs').innerHTML = TABS.map(([id, name]) => `<button data-tab="${id}">${name}</button>`).join('') + '<span class="gap"></span>' + `<span class="pm">${ic('list')}</span>`;
 $('kitQi').innerHTML = ic('search');
+for (const el of document.querySelectorAll('input[type=range], input[type=color], select')) {
+  if (!el.getAttribute('aria-label')) {
+    const label = el.title || el.closest('.prop')?.querySelector('span')?.textContent || el.previousElementSibling?.textContent || el.id;
+    el.setAttribute('aria-label', label.trim());
+  }
+}
 drawUpRole();
 $('kitNav').innerHTML = KIT.map(([id, name, icon]) => `<button data-mod="${id}" class="${id === kitMod ? 'on' : ''}">${ic(icon)}${name}</button>`).join('');
 $('mag').innerHTML = '<option value="fit">Fit</option>' + ZS.map(z => `<option value="${z}">${Math.round(z * 100)}%</option>`).join('');
@@ -3755,16 +4072,23 @@ if (location.hash === '#settings') openPrefs();
 
 new ResizeObserver(() => { fitStage(); if (S) setZoom(); }).observe($('stagewrap'));
 
-(async () => {
+async function startEditor() {
   if (!await load()) return;
   doc = pickDoc(S);
-  wave = await fetch(`${API}/wave`).then(r => r.json()).catch(() => null);
   fitStage();
   loadPreview();
   setZoom();
   draw();
   loadLib();
-})();
+  // the sound wave is read from the soundtrack the first time: the editor does not wait for it
+  wave = await fetch(`${API}/wave`).then(r => r.json()).catch(() => null);
+  drawWave(Math.max(total() * pps, $('tlscroll').clientWidth - HEADW - 2));   // only the wave: a drag already under way is left alone
+}
 </script>
+<script src="/assets/nle.js?v=1"></script>
+<script src="/assets/sequence-preview.js?v=2"></script>
+<script src="/assets/timeline-edit.js?v=2"></script>
+<script src="/assets/editor-sequence.js?v=2"></script>
+<script>startEditor();</script>
 </body>
 </html>

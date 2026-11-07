@@ -1,0 +1,8 @@
+{
+  "date": "2026-10-02",
+  "framework": "vanilla HTML, Python server",
+  "fonts": "Montserrat + Anton via /fonts/ (render.py)",
+  "palette": "hex custom properties per page",
+  "motion": "none",
+  "spacing": "raw px"
+}

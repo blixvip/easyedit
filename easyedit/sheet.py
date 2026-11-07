@@ -27,14 +27,34 @@ from .util import JOBS, probe, read_json, slugify
 TW, TH, COLS = 320, 180, 6
 
 
-def _grab(src: Path, t: float, crop=None) -> np.ndarray | None:
+def tile_for(job: Path) -> tuple[int, int]:
+    """Tile shape for a job: landscape tiles unless its edit is portrait or square."""
+    edit_js = job / "render" / "edit.js"
+    try:
+        edit = json.loads(edit_js.read_text(encoding="utf-8").removeprefix("window.EDIT=").rstrip().rstrip(";"))
+        w, h = int(edit.get("width") or 1920), int(edit.get("height") or 1080)
+    except (OSError, ValueError):
+        return TW, TH
+    return _tile_shape(w, h)
+
+
+def _tile_shape(w: int, h: int) -> tuple[int, int]:
+    if h > w:
+        return 180, 320
+    if h == w:
+        return 240, 240
+    return TW, TH
+
+
+def _grab(src: Path, t: float, crop=None, tile: tuple[int, int] = (TW, TH)) -> np.ndarray | None:
+    tw, th = tile
     vf = (f"crop={crop[0]}:{crop[1]}:{crop[2]}:{crop[3]}," if crop else "") + \
-         f"scale={TW}:{TH}:force_original_aspect_ratio=decrease,pad={TW}:{TH}:(ow-iw)/2:(oh-ih)/2"
+         f"scale={tw}:{th}:force_original_aspect_ratio=decrease,pad={tw}:{th}:(ow-iw)/2:(oh-ih)/2"
     p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0.0, t):.3f}", "-i", str(src), "-frames:v", "1",
                         "-vf", vf, "-f", "rawvideo", "-pix_fmt", "bgr24", "-"], capture_output=True)
-    if len(p.stdout) != TW * TH * 3:
+    if len(p.stdout) != tw * th * 3:
         return None
-    return np.frombuffer(p.stdout, np.uint8).reshape(TH, TW, 3).copy()
+    return np.frombuffer(p.stdout, np.uint8).reshape(th, tw, 3).copy()
 
 
 def _label(img: np.ndarray, text: str) -> np.ndarray:
@@ -45,11 +65,12 @@ def _label(img: np.ndarray, text: str) -> np.ndarray:
 
 
 def _tile(frames: list[np.ndarray], out: Path) -> Path:
+    th, tw = frames[0].shape[:2] if frames else (TH, TW)
     rows = (len(frames) + COLS - 1) // COLS
-    sheet = np.zeros((rows * TH, COLS * TW, 3), np.uint8)
+    sheet = np.zeros((rows * th, COLS * tw, 3), np.uint8)
     for i, f in enumerate(frames):
         r, c = divmod(i, COLS)
-        sheet[r * TH:(r + 1) * TH, c * TW:(c + 1) * TW] = f
+        sheet[r * th:(r + 1) * th, c * tw:(c + 1) * tw] = f
     out.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
     return out
@@ -61,9 +82,10 @@ def candidates(job: Path) -> Path | None:
         return None
     pool = shots.rank(analyses)
     frames, lines = [], []
+    tile = tile_for(job)
     for i, s in enumerate(pool):
         a = analyses[s["src"]]
-        img = _grab(Path(a["source"]), (s["start"] + s["end"]) / 2, a.get("crop"))
+        img = _grab(Path(a["source"]), (s["start"] + s["end"]) / 2, a.get("crop"), tile)
         if img is None:
             continue
         frames.append(_label(img, str(i)))
@@ -146,11 +168,13 @@ def _write_report(job: Path, lines: list[str]) -> Path:
 def video_sheet(video: Path, out: Path, n: int = 36) -> Path | None:
     if not video.exists():
         return None
-    dur = probe(video)["duration"]
+    info = probe(video)
+    dur = info["duration"]
+    tile = _tile_shape(info.get("width", TW), info.get("height", TH))
     frames = []
     for k in range(n):
         t = dur * (k + 0.5) / n
-        img = _grab(video, t)
+        img = _grab(video, t, tile=tile)
         if img is not None:
             frames.append(_label(img, f"{t:.1f}s"))
     return _tile(frames, out)

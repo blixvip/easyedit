@@ -28,6 +28,18 @@ python -m easyedit "The Wolf of Wall Street"
 
 The finished video is saved to `jobs/<movie>/<movie>.mp4` as 1920×1080 at 60fps.
 
+## Cut your own clips in a creator's style
+
+```bash
+python -m easyedit.style analyze nio_trade      # measure a creator's reels (styles/nio_trade/reels/*.mp4)
+python -m easyedit "my reel" --footage C:\clips --music C:\song.mp3 --style nio_trade --aspect 9:16
+```
+
+`style analyze` turns a folder of reels into `style.json` + a plain-text report (cut rhythm, ramps, grade,
+captions, sound design, intro/outro). `--footage` cuts your clips with that profile on a 9:16 canvas, with
+captions from your own narration. Only measurements are used; no frame or sound of the reference reels is
+copied. See AGENTS.md for the full workflow.
+
 ## Example edits
 
 Every one of these came out of a single command. Click a thumbnail to get the full 1080p60 video (all of them are on the [Example edits release](https://github.com/blixvip/easyedit/releases/tag/examples)).
@@ -58,13 +70,14 @@ Every one of these came out of a single command. Click a thumbnail to get the fu
 
 Every finished edit has an **Edit** button on the web page (`python -m easyedit.web`). It opens a timeline editor made for fan edits of films and anime:
 
-- **Live preview.** The same film layer that renders the final video plays in the page, so captions, colours, effects and the title change as you edit them.
+- **Live preview.** Source footage plays directly from the timeline. Moving, trimming, splitting and muting clips updates the monitor immediately, alongside captions, colours, effects and the title.
 - **Shader film layer.** The footage runs through a WebGL pass: camera moves with real motion blur, bloom and halation, lens fringing, sharpening, grain, and a twelve-look colour grade (cinematic, teal and orange, anime, dream, blood, ice and more).
 - **Depth.** Switch Depth on and easyedit reads how far away everything in the footage is (Depth Anything V2, on your GPU). Then captions can sit behind people, the background can blur, the subject can stand out, and the camera gets 3D parallax.
-- **Shots.** Every shot easyedit found, with thumbnails. Drag one onto the timeline to swap it in, drag shots to reorder them, remove the ones you don't want, pick the final shot.
-- **Footage.** Every clip the edit is cut from, with what it is used for (speech, shots, song), where it came from, and its real resolution and bitrate, so a soft source is flagged before you cut from it. Search YouTube (scenepacks and scenes, up to 4K), clip.cafe (find a line by its words), Sakugabooru (anime cuts) and Film-Grab (stills, added as slow push-in shots) from the panel, watch a clip in the viewer, then add it for the shots or as the speech. Paste any link or the path of a file on your computer to bring that in. Yarn and PlayPhrase only answer a browser, so they open there. Removing a clip deletes its download and the shot choices that named it; `clips.json` in the job remembers where each added clip came from.
+- **Timeline.** Drag clips to move them in time or between tracks. Drag either edge to trim. Place the playhead inside a clip and press **Split**, or use **Duplicate** and **Delete**. Select a clip for exact timing, source in point, speed, gain, transforms and effects. Video and audio tracks can be disabled individually; linked source audio follows its video.
+- **Shots.** Every shot easyedit found, with thumbnails. Drag a shot onto an empty track to insert it or onto a clip to replace it. **Add to timeline** in Footage inserts a source at the playhead, including its audio.
+- **Footage.** Every clip the edit is cut from, with what it is used for (speech, shots, song), where it came from, and its real resolution and bitrate, so a soft source is flagged before you cut from it. Search YouTube (scenepacks and scenes, up to 4K), clip.cafe (find a line by its words), Sakugabooru (anime cuts) and Film-Grab (stills, added as slow push-in shots) from the panel, watch a clip in the viewer, then add it for the shots or as the speech. Paste any link or the path of a file on your computer to bring that in. Yarn and PlayPhrase only answer a browser, so they open there. Removing a clip removes its shot choices and keeps the source file for reuse; `clips.json` in the job remembers where each added clip came from.
 - **Anime.** Type an anime's name and easyedit knows it is one (it checks AniList): the speech comes from the English dub, the montage from twixtor clips and scenepacks instead of trailers, and the grade is the anime look. `--anime` forces it, `--no-anime` switches it off. In the editor's Footage tab the Anime group shows the show's card and its characters; click a character to find their footage. Three sites are built for it: **Twixtor** (raw clips ranked the way editors label them), **Openings** (every opening and ending from AnimeThemes, creditless Blu-ray when there is one, as footage or as the song) and **Sakugabooru** (searched by the show's romaji name for you). Any edit can be linked to an anime, so a film edit can borrow anime footage too.
-- **Song.** Any opening, YouTube result, link or file can replace the edit's song from the Footage tab; the beat is read again and the next Apply changes recuts to it.
+- **Song.** Any opening, YouTube result, link or file can replace the edit's song from the Footage tab. The beat is read again; **Auto cut to beat** rearranges the montage when you choose.
 - **Styles.** One click sets a whole look: Velocity, Dark cinematic, Anime AMV, VHS tape or Clean. Each sets the grade, the beat tools and a pattern of effects across the shots; undo it or tweak anything after.
 - **Velocity.** Montage shots get speed ramps (rush in and settle into slow motion, hang then snap away, slow in the middle) with blended frames, so the slow parts are smooth. Set a ramp per shot or switch velocity off.
 - **Sound design.** A whoosh on every cut, a riser into the drop and an impact on the drop and the final shot, synthesized on the spot (no sample packs). One slider sets the level.
@@ -74,7 +87,19 @@ Every finished edit has an **Edit** button on the web page (`python -m easyedit.
 - **Look.** How caption words arrive (rise, drop in, from left or right, pop, wiggle, wave), font, colours, size, position and glow; motion blur, bloom, sharpen and lens amounts; cinema bars, title, frame rate.
 - **Ask AI.** Say what you want changed and your Claude or Codex account edits the captions and look. Undo works on everything.
 
-**Apply changes** recuts the footage (about a minute). **Export** renders the video. The editor saves into the job's own files (`plan.json`, `quote.json`, `curate.json`, `settings.json`), so the command line and your bot see the same edit.
+Edits save automatically to the job's files, including `timeline.json`. **Render preview** builds footage with depth and sound design; these require rendering. **Export** renders the saved timeline with its captions and effects. Undo and redo include timeline changes.
+
+On narrow screens, use **Project**, **Viewer**, and **Controls** to switch panels. Failed saves keep your changes
+in the page and show **Retry save**; Render preview and Export wait until saving succeeds. Keep the tab open until it says Saved.
+
+Every project opens with editable video and audio tracks. **Auto cut to beat** rebuilds the main tracks from
+the current beat settings. Confirm it before replacing your arrangement; Undo restores that arrangement.
+
+The monitor plays original-resolution footage. Small 540p copies are reserved for analysis and thumbnails.
+Automatic footage searches require verified 1080p-class video (including wide cinema crops), and rank the
+actual selected streams by resolution and bitrate. Saved projects retain their current sources. **Better
+footage** searches again and can download sharper copies without overwriting the old files; it also rebuilds
+the cut. Low-resolution or heavily compressed originals still limit the final picture.
 
 **Why it's fun:** one command does the whole edit. It picks the speech and the song, transcribes every word, tracks the face, finds the drop, and cuts to the beat. Everything runs on your own machine with your existing Claude Code or Codex login, and every stage is cached and editable, so you can steer it as much or as little as you like.
 
@@ -217,6 +242,28 @@ cd jobs/<movie>/render && npx hyperframes preview
 
 Use footage and music you have the right to use. easyedit doesn't include any film or music content; it only
 processes what you point it at or what it downloads into your local `jobs/` folder.
+
+## Development checks
+
+Run `python -m pytest -q` for API, save, sequence, media and clip tests. FFmpeg is used for the short duration regression.
+With the web app running, `python -m tests.check_home` checks all home tabs at narrow and wide widths, creation
+errors, duplicate projects, and reconnection. Browser checks require `pip install playwright` and installed Chrome.
+Editor browser tests simulate writes and run when a built project is available. Set `EASYEDIT_BROWSER_URL`
+and `EASYEDIT_BROWSER_JOB` to choose its server and project; these tests never change that project's files.
+
+Set `EASYEDIT_REAL_BROWSER_TESTS=1` to include three real editing workflows. These create isolated, tiny
+video fixtures and verify timeline gestures, controls, source insertion, effects, captions, actual preview
+pixels, undo and saved files through the running API. Each fixture is removed after its test.
+
+For a short export without downloading footage or loading a transcription model:
+
+```bash
+python -m tests.demo_project jobs/workflow-check
+python -m easyedit workflow-check --draft
+```
+
+The fixture refuses to overwrite an existing folder. Open `/editor/workflow-check` to test saving and exporting;
+the resulting video is 2.4 seconds with picture, captions, a title and audio. Delete only this test project afterward.
 
 ## When something goes wrong
 

@@ -8,14 +8,19 @@
 (() => {
   const E = window.EDIT;
   const W = E.width, H = E.height, FPS = E.fps;
+  const S = Math.min(W, H) / 1080;   // pixel sizes below were drawn for a 1080-high frame
   const video = document.getElementById('footage');
   const depthVideo = document.getElementById('depth');
   const canvas = document.getElementById('fx');
   const fxCtx = canvas.getContext('2d');
   let ctx = fxCtx;   // captions draw here, or into capCanvas when they go behind the subject
   const P = Object.assign({ white: '#fbf8f4' }, E.palette);
-  const M = E.montageStart / FPS;
-  const END = E.frames / FPS;
+  // read again every frame: the editor's live preview changes the edit while it plays
+  let M = E.montageStart / FPS;
+  let END = E.frames / FPS;
+  // a sequence (v2): every piece of the picture is a shot that says what it is, so speech can sit
+  // anywhere, shots can cut away from it, and gaps are black. Older edits are speech, then montage.
+  const SEQ = (E.v || 1) >= 2;
   // look settings from the editor
   const L = Object.assign({ grain: 0.05, vignette: 0.42, bars: 0, pulse: 1, flash: 1, shake: 0,
                             capSize: 64, capY: 0.61, capFont: 'caption', capAnim: 'rise', capGlow: 1,
@@ -126,30 +131,36 @@
 
   function shotAt(t) {
     const frame = t * FPS;
-    return E.shots.find(s => frame >= s.start && frame < s.end) || E.shots[E.shots.length - 1];
+    return E.shots.find(s => frame >= s.start && frame < s.end) || E.shots[E.shots.length - 1] || { start: 0, end: 1, gap: true };
   }
+  const speechAt = t => SEQ ? !!shotAt(t).speech : t < M;
 
   function camera(t) {
     const cam = blankCam();
-    if (t < M) {
-      cam.zoom += 0.035 * inOut(t / M);
-      const inside = inOut((t - 0.05) / 0.55) * (1 - inOut((t - (M - 0.55)) / 0.5));
+    if (SEQ && shotAt(t).gap) return cam;
+    if (speechAt(t)) {
+      // the speech piece under the playhead: the whole speech in an older edit
+      const sp = SEQ ? shotAt(t) : null, a0 = sp ? sp.start / FPS : 0, b0 = sp ? sp.end / FPS : M, len = Math.max(0.05, b0 - a0);
+      cam.zoom += 0.035 * inOut((t - a0) / len);
+      const inside = inOut((t - a0 - 0.05) / 0.55) * (1 - inOut((t - (b0 - 0.55)) / 0.5));
       const f = faceAt(t);
       if (f) {
         cam.fx = f.x; cam.fy = f.y;
-        const tight = clamp(260 / Math.max(f.size, 60), 0.4, 1.4);
+        const tight = clamp(260 * S / Math.max(f.size, 60 * S), 0.4, 1.4);
         cam.zoom += 0.13 * tight * inside;
-        cam.tx = clamp((W / 2 - f.x) * 0.5, -130, 130) * inside;
-        cam.ty = clamp((H * 0.42 - f.y) * 0.32, -45, 45) * inside;
+        cam.tx = clamp((W / 2 - f.x) * 0.5, -130 * S, 130 * S) * inside;
+        cam.ty = clamp((H * 0.42 - f.y) * 0.32, -45 * S, 45 * S) * inside;
       } else {
         cam.zoom += 0.08 * inside;
       }
       // a slow handheld drift keeps a locked-off speech shot alive
-      cam.tx += 5 * smooth(t * 0.55, 11) * inside;
-      cam.ty += 4 * smooth(t * 0.5, 23) * inside;
+      cam.tx += 5 * S * smooth(t * 0.55, 11) * inside;
+      cam.ty += 4 * S * smooth(t * 0.5, 23) * inside;
       const kick = emphasisKick(t);
       cam.zoom += 0.022 * kick;
       cam.flash = 0.05 * kick;
+      // a speech piece in a sequence can carry its own transform and effects, like any other layer
+      if (sp && (sp.tf || (sp.fx && sp.fx.length))) return shotFx(cam, sp.fx || [], t, t - a0, len, 0);
       return cam;
     }
     const frame = t * FPS;
@@ -179,10 +190,10 @@
       cam.zoom += 0.24 * enter;
     } else if (kind === 1 || kind === 3) {  // vertical whip
       const d = kind === 1 ? dir : -dir;
-      cam.ty = d * (190 * enter - 90 * exit);
+      cam.ty = d * S * (190 * enter - 90 * exit);
       cam.stretch = 1 + 0.12 * enter + 0.1 * exit;
     } else if (kind === 2) {     // slide + roll
-      cam.tx = dir * (150 * enter - 60 * exit);
+      cam.tx = dir * S * (150 * enter - 60 * exit);
       cam.rot = dir * 1.4 * enter;
       cam.zoom += 0.06 * enter;
     } else if (kind === 4) {     // spin in
@@ -191,10 +202,10 @@
     } else if (kind === 5) {     // start wide (the frame tiles past its edges) and settle in
       cam.zoom -= 0.22 * enter;
     } else if (kind === 7 || kind === 8) {   // straight slide in from the left or right edge
-      cam.tx = (kind === 7 ? -1 : 1) * 560 * enter;
+      cam.tx = (kind === 7 ? -1 : 1) * 560 * S * enter;
       cam.stretch = 1 + 0.03 * Math.abs(enter);
     } else if (kind === 9 || kind === 10) {  // straight slide up from the bottom, or down from the top
-      cam.ty = (kind === 9 ? 1 : -1) * 340 * enter;
+      cam.ty = (kind === 9 ? 1 : -1) * 340 * S * enter;
     } else if (kind === 11) {    // elastic: a big overshoot that rings out slowly
       cam.zoom += 0.3 * Math.exp(-age * 5) * Math.cos(age * 21);
       cam.rot = dir * 2.2 * Math.exp(-age * 5) * Math.sin(age * 21);
@@ -520,6 +531,7 @@
 
   // HyperFrames swaps in an exact still for each rendered frame; in the editor it is the playing video
   function frameSource(el) {
+    if (el.tagName === 'CANVAS') return el;   // the editor's live preview composes each frame itself
     const still = el.nextElementSibling;
     if (still && still.classList && still.classList.contains('__render_frame__') && still.complete && still.naturalWidth > 0) return still;
     return el.readyState >= 2 ? el : null;
@@ -559,7 +571,7 @@
 
     // the shutter stays open for a slice of time; sample the camera across it, inside this shot only
     const shutter = L.blur / 30;
-    const lo = t < M ? 0 : shotAt(t).start / FPS, hi = (t < M ? M : shotAt(t).end / FPS) - 1e-4;
+    const lo = !SEQ && t < M ? 0 : shotAt(t).start / FPS, hi = (!SEQ && t < M ? M : shotAt(t).end / FPS) - 1e-4;
     let n = TAPS;
     for (let i = 0; i < TAPS; i++) inverse(camera(clamp(t + (i / (TAPS - 1) - 0.5) * shutter, lo, hi)), MX, MY, i);
     const last = (TAPS - 1) * 3;
@@ -607,7 +619,7 @@
     gl.uniform1f(u.uHasDepth, hasDepth); gl.uniform1f(u.uDof, dof ? L.dof : 0); gl.uniform1f(u.uPop, L.pop);
     gl.uniform2f(u.uFocus, cam.fx / W, cam.fy / H); gl.uniform1f(u.uCapOn, caps); gl.uniform1f(u.uBehind, hasDepth);
     gl.uniform1f(u.uSeed, Math.floor(t * FPS / 2) % 997); gl.uniform1f(u.uT, t);
-    const GR = (t >= M && GRADES[shotAt(t).grade]) || GRADE;   // a shot can carry its own colour correction
+    const GR = ((SEQ || t >= M) && GRADES[shotAt(t).grade]) || GRADE;   // a shot can carry its own colour correction
     gl.uniform1fv(u.uGrade, GR.g);
     gl.uniform3fv(u.uLo, GR.lo || [0.5, 0.5, 0.5]); gl.uniform3fv(u.uHi, GR.hi || [0.5, 0.5, 0.5]);
     gl.uniform1f(u.uBloomAmt, L.bloom + (GR.bloom || 0)); gl.uniform1f(u.uGlow, cam.glow);
@@ -1261,11 +1273,12 @@
 
   // ---------- title card on the hero shot ----------
   function titleCard(t) {
-    const hero = E.shots[E.shots.length - 1];
+    const hero = SEQ ? shotAt(t) : E.shots[E.shots.length - 1];
+    if (SEQ && !hero.hero) return;
     const start = hero.start / FPS + 0.55;
     if (t < start) return;
     const q = outExpo((t - start) / 0.9);
-    const fade = 1 - inOut((t - (END - 0.7)) / 0.45);
+    const fade = 1 - inOut((t - ((SEQ ? hero.end / FPS : END) - 0.7)) / 0.45);
     ctx.save();
     ctx.translate(W / 2, H * 0.5);
     ctx.globalAlpha = q * fade;
@@ -1275,18 +1288,18 @@
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 20;
-    ctx.font = '96px EEDisplay';
-    ctx.letterSpacing = `${(26 - 12 * q).toFixed(1)}px`;
+    ctx.font = `${Math.round(96 * S)}px EEDisplay`;
+    ctx.letterSpacing = `${((26 - 12 * q) * S).toFixed(1)}px`;
     ctx.fillText(E.title.toUpperCase(), 0, 0);
     const under = outExpo((t - start - 0.35) / 0.8);
     if (under > 0.01) {
       ctx.filter = 'none';
       ctx.globalAlpha = under * fade * 0.9;
-      ctx.fillRect(-170 * under, 74, 340 * under, 2);
+      ctx.fillRect(-170 * S * under, 74 * S, 340 * S * under, Math.max(1, 2 * S));
       if (E.year) {
-        ctx.font = '600 26px EECaption';
-        ctx.letterSpacing = `${(18 - 6 * under).toFixed(1)}px`;
-        ctx.fillText(String(E.year), 0, 112);
+        ctx.font = `600 ${Math.round(26 * S)}px EECaption`;
+        ctx.letterSpacing = `${((18 - 6 * under) * S).toFixed(1)}px`;
+        ctx.fillText(String(E.year), 0, 112 * S);
       }
     }
     ctx.restore();
@@ -1295,8 +1308,10 @@
   let lastTime = 0;
   function draw(time) {
     lastTime = time;
+    M = E.montageStart / FPS; END = E.frames / FPS;
     const t = Math.max(0, time) + (window.SEGMENT_START || 0);
-    const speaking = t < M + 0.05;
+    // in a sequence the captions show wherever the words are heard, cutaways included
+    const speaking = SEQ ? E.captions.some(l => t >= l.start - 0.08 && t < l.end) : t < M + 0.05;
     // captions go through the shader when they should sit behind the subject
     capReady = !!(G && L.capBehind && depthVideo && speaking);
     if (capReady) {
@@ -1311,7 +1326,8 @@
       ctx.fillStyle = '#ff5570'; ctx.font = '40px sans-serif';
       ctx.fillText('WebGL is not available: the footage effects are off', 60, 80);
     }
-    if (speaking) { if (!capReady) caption(t); }
+    if (SEQ) { if (speaking && !capReady) caption(t); titleCard(t); }
+    else if (speaking) { if (!capReady) caption(t); }
     else if (t >= E.shots[E.shots.length - 1].start / FPS) titleCard(t);
     if (t < 0.25) { ctx.fillStyle = `rgba(0,0,0,${(1 - inOut(t / 0.25)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); }
     if (t > END - 0.45) { ctx.fillStyle = `rgba(0,0,0,${inOut((t - END + 0.45) / 0.45).toFixed(3)})`; ctx.fillRect(0, 0, W, H); }

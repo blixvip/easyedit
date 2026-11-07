@@ -1,0 +1,152 @@
+
+  /* ===== the Premiere layout: workspaces, Source and Program monitors, the Project bin beside the timeline ===== */
+  :root { --tl: 340px; --lw: 400px; --rw: 340px; --pw: 300px; --hw: 132px; }
+  #main { grid-template-columns: var(--lw) minmax(0, 1fr) var(--rw); }
+  #ws { display: flex; gap: 2px; margin-left: 12px; }
+  #ws button { border: 0; background: transparent; color: var(--dim); height: 24px; padding: 0 12px; border-radius: 3px; font-weight: 600; }
+  #ws button:hover { color: #fff; background: #2a2a2a; }
+  #ws button.on { color: #fff; background: #303030; box-shadow: inset 0 -2px 0 var(--accent); }
+  #bottom { display: grid; grid-template-columns: var(--pw) minmax(0, 1fr); gap: 3px; min-height: 0; position: relative; }
+  #gripP { left: calc(var(--pw) - 2px); }
+  #proj .page { min-height: 0; }
+  #proj #shots { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+  #proj #pbar { padding: 4px 6px; }
+  .shot { cursor: grab; }
+  .shot .acts button { padding: 0 5px; }
+  .mediahead { display: flex; gap: 5px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .mediahead #disk { color: var(--faint); margin-right: auto; font-size: 10.5px; }
+
+  /* the Source monitor */
+  #lt-source { background: #171717; }
+  #srcwrap { flex: 1; min-height: 0; position: relative; background: #111; overflow: hidden; }
+  #srcvid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+  #srcEmpty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--dim); padding: 22px; background: #171717; line-height: 1.7; }
+  #srcEmpty kbd, #keys kbd { font: 10px var(--mono); color: #ddd; background: #333; border: 1px solid #4a4a4a; border-radius: 2px; padding: 0 4px; }
+  #srcDrag { position: absolute; right: 8px; bottom: 8px; background: rgba(20,20,20,.86); border: 1px solid #5a5a5a; border-radius: 3px; padding: 3px 9px;
+             cursor: grab; color: #e6e6e6; font-size: 11px; display: none; user-select: none; }
+  #srcDrag:hover { border-color: var(--accent); }
+  #lt-source.has #srcDrag { display: block; }
+  #lt-source.has #srcEmpty { display: none; }
+  #srcScrub { position: relative; height: 16px; background: #232323; border-top: 1px solid var(--line); cursor: pointer; flex: none; }
+  #srcRange { position: absolute; top: 3px; bottom: 3px; background: rgba(79,166,255,.32); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue); }
+  #srcHead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; }
+  #srcBar { display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 6px; border-top: 1px solid var(--line); flex: none; }
+  #srcBar .gap, #vfoot .gap { flex: 1; }
+  .tcv { color: var(--blue); font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 4px; }
+  .tcv.dim, .tcv em { color: var(--faint); font-style: normal; }
+
+  /* the Program monitor: transport in the middle */
+  #vfoot { height: 34px; gap: 3px; }
+  #transport { padding: 0; gap: 1px; }
+  #transport button.icon { width: 28px; height: 26px; }
+  #transport button.icon.play { width: 36px; color: #fff; }
+  #side { min-height: 0; }
+  #blank button { margin-top: 6px; }
+
+  /* the timeline: a tool strip, then tracks */
+  #tl { display: grid; grid-template-columns: 32px minmax(0, 1fr); background: var(--panel); min-height: 0; position: relative; }
+  #tools { display: flex; flex-direction: column; gap: 3px; padding: 6px 3px; background: #1d1d1d; border-right: 1px solid var(--line); align-items: center; overflow: hidden; }
+  #tools button { width: 26px; height: 26px; padding: 0; justify-content: center; border-color: transparent; background: transparent; color: #bdbdbd; }
+  #tools button:hover { background: #333; color: #fff; }
+  #tools button.on { background: #17324f; color: var(--blue); border-color: #24517f; }
+  #tools hr { width: 18px; border: 0; border-top: 1px solid #383838; margin: 3px 0; }
+  #tlmain { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  #tlbar { height: 34px; gap: 4px; padding: 0 8px 0 0; }
+  #tlbar button.tog.on { color: var(--blue); background: #17324f; border-color: #24517f; }
+  #cols { width: var(--hw); display: flex; align-items: center; gap: 1px; padding: 0 3px 0 8px; color: var(--faint); font-size: 10.5px; }
+  #cols .gap { flex: 1; }
+  #cols button.icon { width: 20px; height: 20px; }
+  #cols svg.i { width: 12px; height: 12px; }
+  .trk { display: flex; position: relative; border-bottom: 1px solid #161616; }
+  .trk.v { height: 52px; }
+  .trk.a { height: 46px; }
+  .trk.c { height: 26px; }
+  .trk.v1 { border-bottom: 3px solid #121212; }
+  .trk .th { position: sticky; left: 0; z-index: 6; width: var(--hw); flex: none; display: flex; align-items: center; gap: 2px; padding: 0 4px;
+             background: #262626; border-right: 1px solid var(--line); }
+  .trk.c .th { background: #222; }
+  .trk .tb { position: relative; flex: none; }
+  .trk.v .tb { background: #1f1f1f; }
+  .trk.a .tb { background: #1b1d1c; }
+  .trk.c .tb { background: #1c1c1c; }
+  .trk.off .tb > * { opacity: .38; }
+  .trk.lock .tb { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 6px, transparent 6px 12px); }
+  .th .tn { font: 600 11px var(--ui); min-width: 26px; height: 20px; padding: 0 3px; display: grid; place-items: center; border-radius: 3px; color: #cfcfcf;
+            cursor: pointer; border: 1px solid #3c3c3c; }
+  .th .tn:hover { border-color: #777; }
+  .th .tn.target { background: #2d6aa8; border-color: #4a8fd4; color: #fff; }
+  .th .tt { width: 20px; height: 20px; display: grid; place-items: center; color: var(--faint); cursor: pointer; border-radius: 3px; flex: none; }
+  .th .tt:hover { color: #fff; background: #383838; }
+  .th .tt.off { color: var(--bad); }
+  .th .tt.on { color: var(--warn); }
+  .th .tt svg.i { width: 12px; height: 12px; }
+  .th .tl { color: var(--dim); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 2px; }
+  .tb .clip { top: 3px; bottom: 3px; padding: 0 6px 2px 5px; display: flex; align-items: flex-end; gap: 4px; font-size: 10.5px; touch-action: none; }
+  .tb .clip.v { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 94%, #fff), color-mix(in srgb, var(--c) 76%, #000)); }
+  .tb .clip.a { align-items: flex-start; padding-top: 2px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 70%, #000), color-mix(in srgb, var(--c) 50%, #000)); }
+  .tb .clip .tm { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background-size: cover; background-position: center; border-right: 1px solid rgba(0,0,0,.45); pointer-events: none; }
+  .tb .clip b { position: relative; z-index: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+                background: color-mix(in srgb, var(--c) 70%, transparent); padding: 0 3px; border-radius: 2px; }
+  .tb .clip .bdg { position: relative; z-index: 1; font: 700 9px var(--ui); padding: 0 3px; border-radius: 2px; background: rgba(0,0,0,.45); color: #fff; pointer-events: none; white-space: nowrap; }
+  .tb .clip canvas { position: absolute; left: 0; bottom: 2px; height: 66%; width: 100%; pointer-events: none; }
+  .tb .clip.off { filter: grayscale(1) brightness(.55); }
+  .tb .clip.sel { box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px #000; z-index: 2; }
+  .tb .clip.moving { opacity: .82; z-index: 5; box-shadow: inset 0 0 0 2px #fff, 0 6px 16px rgba(0,0,0,.55); }
+  .tb .clip.doomed { filter: brightness(.45) saturate(.4); }
+  .tb .clip .e { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 3; cursor: ew-resize; }
+  .tb .clip .e.l { left: 0; }
+  .tb .clip .e.r { right: 0; }
+  .tb .clip .e:hover, .tb .clip .e.on { background: rgba(255,216,74,.55); }
+  .tb .clip .lk { position: relative; z-index: 1; width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .55; pointer-events: none; align-self: center; }
+  body[data-tool=razor] .tb .clip, body[data-tool=razor] .tb .clip .e { cursor: crosshair; }
+  body[data-tool=slip] .tb .clip { cursor: col-resize; }
+  body[data-tool=track] .tb, body[data-tool=track] .tb .clip { cursor: e-resize; }
+  body[data-tool=hand] #tlscroll, body[data-tool=hand] .tb .clip { cursor: grab; }
+  body[data-tool=zoom] #tlscroll, body[data-tool=zoom] .tb .clip { cursor: zoom-in; }
+  .gapsel { position: absolute; top: 3px; bottom: 3px; background: rgba(79,166,255,.2); border: 1px dashed var(--blue); pointer-events: none; }
+  .ghost { position: absolute; top: 3px; bottom: 3px; border: 2px dashed #fff; background: rgba(255,255,255,.12); pointer-events: none; z-index: 6; }
+  #snapline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid #ffd84a; display: none; z-index: 8; pointer-events: none; }
+  #tip { position: fixed; z-index: 80; display: none; background: #ffd84a; color: #111; font-size: 10.5px; padding: 1px 6px; white-space: nowrap; pointer-events: none; border-radius: 2px; }
+  #drag { position: fixed; z-index: 70; pointer-events: none; display: none; width: 104px; aspect-ratio: 16/9; background: #000 center/cover;
+          outline: 2px solid var(--accent); box-shadow: 0 10px 24px rgba(0,0,0,.6); transform: translate(-50%, -60%); }
+  .tb .line { top: 3px; bottom: 3px; }
+  #head { z-index: 7; }
+
+  /* the Footage and Songs pages */
+  .wsPage { position: absolute; inset: 0; z-index: 20; display: grid; grid-template-columns: 300px minmax(0, 1fr) 440px; gap: 3px; background: var(--bg); }
+  .wsSide, .wsMain, .wsPrev { background: var(--panel); min-height: 0; overflow: auto; }
+  .wsMain { padding: 14px 18px 24px; }
+  .wsHead { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+  .wsHead h2 { margin: 0; font-size: 18px; font-weight: 600; color: #f0f0f0; }
+  .wsFind { flex: 1; display: flex; gap: 6px; align-items: center; max-width: 680px; position: relative; flex-wrap: nowrap; }
+  .wsFind input { height: 30px; font-size: 13px; padding-left: 30px; }
+  .wsFind .ico { position: absolute; left: 9px; top: 8px; color: var(--faint); }
+  .wsFind button { height: 30px; padding: 0 18px; }
+  .wsPage .sites button { height: 26px; padding: 0 12px; }
+  .wsPage #hits { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .wsPage .hit .pic { cursor: pointer; }
+  .wsPage .hit.on { outline: 2px solid var(--accent); }
+  .wsPrev { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .pv16 { aspect-ratio: 16/9; background: #000; display: grid; place-items: center; overflow: hidden; flex: none; }
+  .pv16 iframe, .pv16 video, .pv16 img { width: 100%; height: 100%; border: 0; object-fit: contain; display: block; }
+  .pv16 .hint { margin: 0; }
+  .wsPrev > b { font-size: 13px; color: #f0f0f0; font-weight: 600; line-height: 1.35; }
+  .wsPrev > small { color: var(--dim); }
+  .wsPrev .row button { height: 28px; padding: 0 12px; }
+  .song { display: grid; grid-template-columns: 108px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 6px; border-bottom: 1px solid #1c1c1c; cursor: pointer; }
+  .song:hover { background: #2c2c2c; }
+  .song.on { background: #17324f; }
+  .song img { width: 108px; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
+  .song b { display: block; color: #ececec; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .song small { color: var(--dim); display: block; }
+  .song .row { flex-wrap: nowrap; }
+  .song .row button { height: 26px; }
+  .song.added b::after { content: "  · the song now"; color: var(--good); font-weight: 400; }
+  .chipsWrap { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chipsWrap button { height: 24px; border-radius: 12px; padding: 0 10px; color: #cfcfcf; }
+  .chipsWrap button:hover { border-color: var(--accent); color: #fff; }
+  .nowSong { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .nowSong .disc { width: 64px; height: 64px; border-radius: 6px; display: grid; place-items: center; background: #17324f; color: var(--blue); }
+  .nowSong b { display: block; color: #f0f0f0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nowSong small { display: block; color: var(--dim); }
+  body[data-ws=footage] #ws button[data-ws=footage], body[data-ws=songs] #ws button[data-ws=songs] { color: #fff; }

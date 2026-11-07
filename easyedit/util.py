@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -27,7 +29,7 @@ def die(msg: str) -> "None":
 
 def slugify(text: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return s[:60] or "edit"
+    return s[:60].rstrip("-") or "edit"
 
 
 def need(binary: str) -> str:
@@ -68,10 +70,20 @@ def probe(path: Path) -> dict:
 
 
 def write_json(path: Path, data) -> None:
+    """Write the whole file or nothing: a reader (or a crash) never sees half of it."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False,
-                               default=lambda o: o.item() if hasattr(o, "item") else str(o)),
-                    encoding="utf-8")
+    text = json.dumps(data, indent=2, ensure_ascii=False,
+                      default=lambda o: o.item() if hasattr(o, "item") else str(o))
+    tmp = path.with_name(f".{path.name}.{os.getpid()}-{threading.get_ident()}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    for _ in range(25):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:   # Windows: someone is reading it this very moment
+            time.sleep(0.02)
+    tmp.unlink(missing_ok=True)
+    path.write_text(text, encoding="utf-8")
 
 
 def read_json(path: Path):

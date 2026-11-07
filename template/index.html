@@ -13,23 +13,23 @@
 @font-face { font-family: EEScript; src: url('fonts/Caveat.ttf'); font-weight: 400 700; }
 @font-face { font-family: EEMarker; src: url('fonts/PermanentMarker.ttf'); }
 * { box-sizing: border-box; }
-html, body { margin: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }
-#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
-#depth { position: absolute; left: 0; top: 0; width: 640px; height: 360px; opacity: 0; }
-#footage { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
-#gl { position: absolute; inset: 0; width: 1920px; height: 1080px; }
-#fx { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+html, body { margin: 0; width: __W__px; height: __H__px; background: #000; overflow: hidden; }
+#stage { position: relative; width: __W__px; height: __H__px; overflow: hidden; background: #000; }
+#depth { position: absolute; left: 0; top: 0; width: __DW__px; height: __DH__px; opacity: 0; }
+#footage { position: absolute; inset: 0; width: __W__px; height: __H__px; object-fit: cover; }
+#gl { position: absolute; inset: 0; width: __W__px; height: __H__px; }
+#fx { position: absolute; inset: 0; width: __W__px; height: __H__px; pointer-events: none; }
 </style>
 </head>
 <body>
 <main id="stage" data-composition-id="easyedit" data-start="0" data-duration="__DURATION__"
-      data-width="1920" data-height="1080" data-fps="__FPS__" data-no-timeline>
+      data-width="__W__" data-height="__H__" data-fps="__FPS__" data-no-timeline>
   <video id="footage" class="clip" src="footage.mp4" data-start="0" data-duration="__DURATION__"
          data-media-start="__MEDIA_START__" data-track-index="0" muted playsinline preload="auto"></video>
 __DEPTH__
-  <canvas id="gl" class="clip" width="1920" height="1080" data-start="0" data-duration="__DURATION__"
+  <canvas id="gl" class="clip" width="__W__" height="__H__" data-start="0" data-duration="__DURATION__"
           data-track-index="2"></canvas>
-  <canvas id="fx" class="clip" width="1920" height="1080" data-start="0" data-duration="__DURATION__"
+  <canvas id="fx" class="clip" width="__W__" height="__H__" data-start="0" data-duration="__DURATION__"
           data-track-index="3"></canvas>
 </main>
 <script>window.SEGMENT_START = __SEGMENT_START__;</script>

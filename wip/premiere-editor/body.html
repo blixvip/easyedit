@@ -1,0 +1,388 @@
+<body data-tool="sel" data-ws="edit">
+<div id="top">
+  <a class="logo" href="/" title="Back to your projects"><img src="/assets/logo.svg" alt="easyedit"></a>
+  <a href="/" title="Back to your projects" style="color:var(--dim);text-decoration:none;padding:0 6px 0 0;white-space:nowrap">&lsaquo; Projects</a>
+  <span class="sep"></span>
+  <span class="name" id="name"></span>
+  <nav id="ws" aria-label="Workspaces">
+    <button data-ws="edit" class="on" title="Cut, trim and arrange the edit (Alt+1)">Editing</button>
+    <button data-ws="footage" title="Search for footage and bring it into this edit (Alt+2)">Footage</button>
+    <button data-ws="songs" title="Search for a song or an edit audio and cut to it (Alt+3)">Songs</button>
+  </nav>
+  <span class="gap"></span>
+  <button class="icon" id="undo" title="Undo (Ctrl+Z)"></button>
+  <button class="icon" id="redo" title="Redo (Ctrl+Shift+Z)"></button>
+  <span class="sep"></span>
+  <button class="icon" id="prefsBtn" title="Preferences and keyboard shortcuts (Ctrl+,)"></button>
+  <div class="menu" id="histMenu"><button id="histBtn" title="Earlier versions of this edit. One is kept every time you render or export.">History</button><div id="histList"></div></div>
+  <span class="chip" id="chip" role="status" aria-live="polite">Loading</span>
+  <button id="apply" title="Cut the exact footage with sound effects and the depth map (Enter). The Program monitor already plays your edit live.">Render preview</button>
+  <div class="menu" id="exportMenu">
+    <button class="primary" id="export">Export</button>
+    <div>
+      <button data-mode="full">Full quality<small>1080p at your frame rate</small></button>
+      <button data-mode="draft">Draft<small>30 fps, about twice as fast</small></button>
+    </div>
+  </div>
+  <a id="watch" target="_blank" hidden>Watch last export</a>
+</div>
+<div id="runbar"><i></i></div>
+
+<div id="main">
+  <section class="panel" id="left">
+    <div class="ptabs" id="ltabs">
+      <button data-lt="source" class="on" title="The Source monitor: watch a clip, mark its in and out, then insert it">Source<em id="srcName"></em></button>
+      <button data-lt="fx" title="Motion, opacity, speed and the effects of the selected clip">Effect Controls<em id="fxTabName"></em></button>
+      <button data-lt="kit" title="Camera moves, effects, colour, curves, text and presets">Effects</button>
+      <span class="gap"></span><span class="pm" id="pmL"></span>
+    </div>
+    <div class="page on" id="lt-source">
+      <div id="srcwrap">
+        <video id="srcvid" playsinline preload="auto"></video>
+        <div id="srcEmpty"><p>Click a shot in the Project panel to watch it here.<br>Mark In <kbd>I</kbd> and Out <kbd>O</kbd>, then Insert <kbd>,</kbd> or Overwrite <kbd>.</kbd> at the playhead, or drag it onto a track.</p></div>
+        <div id="srcDrag" title="Drag onto a track in the timeline">Drag to timeline</div>
+      </div>
+      <div id="srcScrub" title="Click or drag to move through the clip"><i id="srcRange"></i><i id="srcHead"></i></div>
+      <div id="srcBar">
+        <span class="tcv" id="srcTc">0:00:00:00</span>
+        <span class="gap"></span>
+        <button class="icon" id="srcMarkIn" title="Mark In (I)"></button>
+        <button class="icon" id="srcMarkOut" title="Mark Out (O)"></button>
+        <button class="icon" id="srcPlay" title="Play or pause the source (Space when the pointer is here)"></button>
+        <button class="icon" id="srcInsert" title="Insert at the playhead and push the rest along (,)"></button>
+        <button class="icon" id="srcOverwrite" title="Overwrite at the playhead (.)"></button>
+        <span class="gap"></span>
+        <span class="tcv dim" id="srcDur"></span>
+      </div>
+    </div>
+    <div class="page" id="lt-fx">
+      <div id="fxhead"></div>
+      <div class="scroll" id="shotTools">
+        <p class="hint pad" id="shotHint">Select a clip on the timeline to change its motion, opacity, speed and effects.</p>
+        <div id="shotBody" hidden>
+          <div class="shothead"><img id="shotThumb" alt=""><div><b id="shotTitle"></b><small id="shotMeta"></small></div></div>
+          <details class="fxg" open><summary>Effects on This Clip</summary><div id="fxstack"></div>
+            <div class="fxacts"><button id="fxOpenKit" class="primary">Add an effect</button><button id="fxSave" title="Keep this clip's setup as one of your presets">Save as preset</button><button id="fxReset">Reset clip</button></div>
+          </details>
+          <details class="fxg" open><summary><i>fx</i>Motion<small>P S R T · keyframes at the start and end</small></summary><div class="fxb" id="tfBox"></div></details>
+          <details class="fxg" open><summary><i>fx</i>Time Remapping</summary><div class="fxb">
+            <label>Speed ramp</label><div class="seg" id="ramps"></div>
+            <label>Speed</label><div class="seg" id="speeds"></div>
+            <div class="prop" style="margin-top:8px"><span>Source in</span><b class="pv" id="slipv"></b><input type="range" id="slip" min="0" max="1" step="0.001"></div>
+            <div class="ends"><span>start of the source</span><span>end of the source</span></div>
+            <label>Clip</label><div class="row"><button id="clipOff" title="Switch the clip off without removing it (Shift+E)">Disable</button><button id="clipUnlink" title="Move the picture and the sound of a speech clip separately">Unlink</button><button id="clipToSrc" title="Open the clip's source in the Source monitor">Open source</button></div>
+          </div></details>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="lt-kit">
+      <div class="kitnav" id="kitNav"></div>
+      <div class="kithead" id="kitHead"></div>
+      <div class="kitscope" id="kitScopeRow"><span>Apply to</span><div class="seg" id="kitScope"></div></div>
+      <div class="kitfind" id="kitFindRow">
+        <div class="box"><input id="kitQ" maxlength="40" placeholder="Search moves, effects and colours" spellcheck="false" autocomplete="off"><span id="kitQi"></span></div>
+        <div class="kitcats" id="kitCats"></div>
+      </div>
+      <div class="scroll" id="kitScroll">
+        <div class="kitp on" id="kit-presets">
+          <details class="fxg kg" data-cat="move" open><summary>Movement<em></em><small>how the clip arrives</small></summary><div class="fxb kit"><div class="ptg" id="moves"></div></div></details>
+          <details class="fxg kg" data-cat="motion" open><summary>Motion<em></em><small>the camera keeps moving</small></summary><div class="fxb kit"><div class="ptg" id="fxMotion"></div></div></details>
+          <details class="fxg kg" data-cat="light" open><summary>Light<em></em><small>flashes, glows and reveals</small></summary><div class="fxb kit"><div class="ptg" id="fxLight"></div></div></details>
+          <details class="fxg kg" data-cat="style" open><summary>Stylize<em></em><small>change the picture itself</small></summary><div class="fxb kit"><div class="ptg" id="fxStyle"></div></div></details>
+          <details class="fxg kg" data-cat="subject" open><summary>Subject<em></em><small id="depthFxNote"></small></summary><div class="fxb kit"><div class="ptg" id="dfxs"></div></div></details>
+          <details class="fxg kg" data-cat="color" open><summary>Color<em></em><small>this clip only</small></summary><div class="fxb kit"><div class="ptg" id="ccs"></div></div></details>
+          <p class="empty" id="kitNone" hidden>Nothing by that name.</p>
+        </div>
+        <div class="kitp" id="kit-curves">
+          <details class="fxg" open><summary>Curve<small>how a camera move settles</small></summary><div class="fxb kit"><div class="ptg" id="curves"></div></div></details>
+          <details class="fxg" open><summary>Speed Ramp<small>speed across the clip</small></summary><div class="fxb kit"><div class="ptg" id="kitRamps"></div></div></details>
+          <details class="fxg" open><summary>Speed</summary><div class="fxb kit"><div class="seg" id="kitSpeeds"></div></div></details>
+        </div>
+        <div class="kitp" id="kit-text">
+          <details class="fxg" open><summary>Text Styles<small>the look of the captions</small></summary><div class="fxb kit"><div class="tsg" id="capStyles"></div></div></details>
+          <details class="fxg" open><summary>Text Animations<small>After Effects presets, rebuilt</small></summary><div class="fxb kit">
+            <p class="hint">How the words come in. These drive the Signature styles; picking one on a Classic style switches it to Cinematic glow.</p>
+            <div class="tiles" id="capMotions"></div>
+          </div></details>
+          <details class="fxg" open><summary>Text Effects<small>stack any of them</small></summary><div class="fxb kit">
+            <div class="tiles" id="capFxs"></div>
+          </div></details>
+          <details class="fxg" open><summary>Captions</summary><div class="fxb">
+            <label style="margin-top:0">Words per caption</label><div class="seg" id="wplSeg"></div>
+            <label>Clean up</label>
+            <div class="row"><button id="capUpper">UPPERCASE</button><button id="capLower">lowercase</button><button id="capPunct">Remove punctuation</button></div>
+            <div style="height:8px"></div>
+            <div class="prop"><span>Tracking</span><b class="pv" id="capTrackv"></b><input type="range" data-look="capTrack" id="capTrack" min="0" max="40" step="1"></div>
+          </div></details>
+          <details class="fxg" open><summary>Custom Text Animation</summary><div class="fxb">
+            <p class="hint">Where each word starts from before it lands.</p>
+            <div class="seg" id="customSeg"></div>
+            <div style="height:6px"></div>
+            <div class="prop"><span>Position X</span><b class="pv" id="capDXv"></b><input type="range" data-look="capDX" id="capDX" min="-300" max="300" step="5"></div>
+            <div class="prop"><span>Position Y</span><b class="pv" id="capDYv"></b><input type="range" data-look="capDY" id="capDY" min="-300" max="300" step="5"></div>
+            <div class="prop"><span>Scale</span><b class="pv" id="capFromScalev"></b><input type="range" data-look="capFromScale" id="capFromScale" min="0.2" max="3" step="0.05"></div>
+            <div class="prop"><span>Rotation</span><b class="pv" id="capRotv"></b><input type="range" data-look="capRot" id="capRot" min="-90" max="90" step="1"></div>
+          </div></details>
+          <details class="fxg" open><summary>Export</summary><div class="fxb">
+            <div class="row"><button id="srt">Export .srt</button><span class="hint" style="margin:0">Subtitle file of the captions</span></div>
+          </div></details>
+        </div>
+        <div class="kitp" id="kit-saved">
+          <details class="fxg" open><summary>Starter Combos<small>a move, effects and colour in one click</small></summary><div class="fxb kit"><div class="ptg" id="starters"></div></div></details>
+          <details class="fxg" open><summary>Your Presets<em id="nMine"></em><small>saved on this computer</small></summary>
+            <div class="fxb kit">
+              <div class="saverow"><input id="presetName" maxlength="30" placeholder="Name the selected clip's setup" style="flex:1"><button id="presetSave" class="primary">Save</button></div>
+            </div>
+            <div id="myPresets"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="mon">
+    <div class="ptabs">
+      <button class="on">Program<em id="compName"></em></button>
+      <span class="gap"></span><span class="pm" id="pmC"></span>
+    </div>
+    <div id="stagewrap">
+      <div id="stage"><iframe id="frame" title="Program monitor"></iframe><div id="guides"></div></div>
+      <div id="glass"></div>
+      <div id="blank"><div><p id="blankText"></p><button class="primary" id="blankApply">Download the footage</button></div></div>
+      <div id="busy"><div><b id="busyTitle"></b><span id="busyStage"></span><div class="bar"><i></i></div></div></div>
+    </div>
+    <div id="vfoot">
+      <span class="tcv"><span id="vclock">0:00:00:00</span></span>
+      <select id="mag" title="Magnification (scroll over the picture, or , and . with Ctrl)"></select>
+      <span class="gap"></span>
+      <div id="transport">
+        <button class="icon" id="first" title="Go to the start (Home)"></button>
+        <button class="icon" id="prevEdit" title="Go to the previous edit point (Up)"></button>
+        <button class="icon" id="back" title="Back one frame (Left)"></button>
+        <button class="icon play" id="play" title="Play or pause (Space)"></button>
+        <button class="icon" id="fwd" title="Forward one frame (Right)"></button>
+        <button class="icon" id="nextEdit" title="Go to the next edit point (Down)"></button>
+        <button class="icon" id="last" title="Go to the end (End)"></button>
+      </div>
+      <span class="gap"></span>
+      <button class="icon" id="safeBtn" title="Title and action safe margins"></button>
+      <button class="icon" id="gridBtn" title="Rule of thirds grid"></button>
+      <span id="volIcon" title="Mute (Shift+M)"></span>
+      <input type="range" id="vol" min="0" max="1" step="0.05" value="1" title="Volume">
+      <span class="tcv dim"><em id="vdur"></em></span>
+    </div>
+  </section>
+
+  <section class="panel" id="side">
+    <div class="ptabs" id="tabs"></div>
+    <div class="scroll">
+      <div class="tabpage" id="tab-captions">
+        <p class="hint pad" style="padding-bottom:0">Click a word to colour it, fix its spelling, or start a new line there.</p>
+        <div id="caps"></div>
+      </div>
+      <div class="tabpage pad" id="tab-speech">
+        <p class="hint">Click a word to start the speech there. Shift-click a word to end it there. The speech clip on the timeline follows.</p>
+        <select id="clipsel"></select>
+        <p class="hint" id="span" style="margin-top:8px"></p>
+        <div id="script"></div>
+      </div>
+      <div class="tabpage" id="tab-look">
+        <details class="fxg" open><summary>Animation Presets<small>look + beat + effects</small></summary><div class="fxb">
+          <div class="tiles presets" id="styles"></div>
+        </div></details>
+        <details class="fxg" open><summary><i>fx</i>Colour and Picture</summary><div class="fxb">
+          <div class="tiles pics" id="grades"></div>
+          <label>Cinema bars</label><div class="seg" id="barsSeg"></div>
+          <label>Bars arrive</label><div class="seg" id="barsDropSeg"></div>
+          <div style="height:6px"></div>
+          <div class="prop"><span>Motion blur</span><b class="pv" id="blurv"></b><input type="range" data-look="blur" id="blur" min="0" max="2.5" step="0.1"></div>
+          <div class="prop"><span>Bloom</span><b class="pv" id="bloomv"></b><input type="range" data-look="bloom" id="bloom" min="0" max="1.5" step="0.05"></div>
+          <div class="prop"><span>Sharpen</span><b class="pv" id="sharpenv"></b><input type="range" data-look="sharpen" id="sharpen" min="0" max="1" step="0.05"></div>
+          <div class="prop"><span>Lens fringing</span><b class="pv" id="lensv"></b><input type="range" data-look="lens" id="lens" min="0" max="2" step="0.05"></div>
+          <div class="prop"><span>Floating dust</span><b class="pv" id="dustv"></b><input type="range" data-look="dust" id="dust" min="0" max="1" step="0.05"></div>
+          <div class="prop"><span>Light flicker</span><b class="pv" id="flickerv"></b><input type="range" data-look="flicker" id="flicker" min="0" max="1" step="0.05"></div>
+          <div class="prop"><span>Film grain</span><b class="pv" id="grainv"></b><input type="range" data-look="grain" id="grain" min="0" max="0.25" step="0.01"></div>
+          <div class="prop"><span>Vignette</span><b class="pv" id="vignettev"></b><input type="range" data-look="vignette" id="vignette" min="0" max="0.9" step="0.02"></div>
+        </div></details>
+        <details class="fxg" open><summary><i>fx</i>Caption Style</summary><div class="fxb">
+          <label style="margin-top:0">How words arrive</label><div class="tiles" id="anims"></div>
+          <label>Font</label><div class="seg" id="capFonts"></div>
+          <label>Colours</label><div class="pal" id="pal"></div>
+          <div style="height:8px"></div>
+          <div class="prop"><span>Size</span><b class="pv" id="capSizev"></b><input type="range" data-look="capSize" id="capSize" min="36" max="120" step="2"></div>
+          <div class="prop"><span>Height on screen</span><b class="pv" id="capYv"></b><input type="range" data-look="capY" id="capY" min="0.12" max="0.9" step="0.01"></div>
+          <div class="prop"><span>Glow</span><b class="pv" id="capGlowv"></b><input type="range" data-look="capGlow" id="capGlow" min="0" max="3" step="0.1"></div>
+        </div></details>
+        <details class="fxg" open><summary><i>fx</i>Depth<small>3D from the footage</small></summary><div class="fxb">
+          <div class="seg" id="depthSeg"></div>
+          <p class="hint" id="depthNote" style="margin:7px 0 0" hidden></p>
+          <div id="depthBody">
+            <label>Captions</label><div class="seg" id="behindSeg"></div>
+            <div style="height:6px"></div>
+            <div class="prop"><span>Background blur</span><b class="pv" id="dofv"></b><input type="range" data-look="dof" id="dof" min="0" max="1.5" step="0.05"></div>
+            <div class="prop"><span>Subject stands out</span><b class="pv" id="popv"></b><input type="range" data-look="pop" id="pop" min="0" max="1" step="0.05"></div>
+            <div class="prop"><span>3D parallax</span><b class="pv" id="parallaxv"></b><input type="range" data-look="parallax" id="parallax" min="0" max="2" step="0.1"></div>
+          </div>
+        </div></details>
+        <details class="fxg" open><summary>Sequence Settings</summary><div class="fxb">
+          <label style="margin-top:0">Title on the final shot</label><input id="title" maxlength="80">
+          <label>Frame rate</label><div class="seg" id="fpsSeg"></div>
+        </div></details>
+      </div>
+      <div class="tabpage" id="tab-beat">
+        <details class="fxg" open><summary><i>fx</i>Auto-cut to the beat<small>replaces the cut on V1</small></summary><div class="fxb">
+          <p class="hint">These lay the montage out again on the song's beat. Your own trims and moves on V1 are replaced; Ctrl+Z puts them back.</p>
+          <label style="margin-top:0">Velocity (speed ramps on the shots)</label><div class="seg" id="velSeg"></div>
+          <label>How often it cuts</label><div class="seg" id="rates"></div>
+          <div style="height:6px"></div>
+          <div class="prop"><span>Montage length</span><b class="pv" id="mlv"></b><input type="range" id="ml" min="8" max="40" step="0.5"></div>
+          <div class="prop"><span>Final shot length</span><b class="pv" id="hlv"></b><input type="range" id="hl" min="2" max="8" step="0.1"></div>
+          <div class="row" style="margin-top:8px"><button id="recut" class="primary">Cut it to the beat again</button><button id="resetShots" title="Let easyedit choose the shots again">Fresh shots</button></div>
+        </div></details>
+        <details class="fxg" open><summary><i>fx</i>On the Beat</summary><div class="fxb">
+          <div class="prop"><span>Zoom pulse</span><b class="pv" id="pulsev"></b><input type="range" data-look="pulse" id="pulse" min="0" max="3" step="0.1"></div>
+          <div class="prop"><span>Flash on each cut</span><b class="pv" id="flashv"></b><input type="range" data-look="flash" id="flash" min="0" max="2.5" step="0.1"></div>
+          <div class="prop"><span>Camera shake</span><b class="pv" id="shakev"></b><input type="range" data-look="shake" id="shake" min="0" max="2" step="0.1"></div>
+          <div class="prop"><span>Whooshes and impacts</span><b class="pv" id="sfxv"></b><input type="range" id="sfx" min="0" max="1.5" step="0.05"></div>
+          <p class="hint" style="margin-top:6px">Whooshes are heard after Render preview and in the export.</p>
+        </div></details>
+      </div>
+      <div class="tabpage pad" id="tab-ai">
+        <p class="hint">Say what you want changed. Your AI account edits the captions, colours, grade, title and lengths. You can undo it.</p>
+        <textarea id="ask" rows="4" placeholder="Make the money words gold and give it a colder grade"></textarea>
+        <div class="row" style="margin-top:7px"><button class="primary" id="askGo">Change it</button><span class="hint" id="askState" style="margin:0"></span></div>
+        <div class="ideas" style="margin-top:12px">
+          <button>Highlight the most powerful word in each line</button><button>Make it darker and moodier</button>
+          <button>Fewer coloured words, only the ones that hit</button><button>Shorter, punchier montage</button>
+        </div>
+        <div id="notes"></div>
+      </div>
+    </div>
+    <div id="wordbox">
+      <div class="row"><input id="wtext" maxlength="40" style="flex:1"><button id="wdel" title="Remove this word from the captions">Delete</button></div>
+      <div class="row" style="margin-top:7px" id="wroles"></div>
+      <div class="row" style="margin-top:7px">
+        <button id="wbreak">New line here</button><button id="wjoin">Join line above</button>
+        <button id="wearly" title="Show this word 0.05s earlier">Earlier</button><button id="wlate" title="Show this word 0.05s later">Later</button>
+      </div>
+    </div>
+  </section>
+  <div class="vgrip" id="gripL" title="Drag to resize"></div>
+  <div class="vgrip" id="gripR" title="Drag to resize"></div>
+
+  <section class="wsPage" id="pageFootage" hidden>
+    <div class="wsSide">
+      <details class="fxg" open><summary>Import a Link or a File</summary><div class="fxb in">
+        <div class="dropzone" id="dropzone"><b>Drop videos, songs or pictures here</b>
+          <button id="browse">Browse files</button>
+          <input type="file" id="filePick" multiple hidden accept="video/*,audio/*,image/*,.mkv" aria-label="Files to import">
+        </div>
+        <div class="row" style="margin:8px 0 2px"><span class="hint" style="margin:0">Use videos for</span><div class="seg" id="upRole" style="flex:1"></div></div>
+        <div id="upList" role="status" aria-live="polite"></div>
+        <p class="hint" style="margin-top:10px">Or paste a link: YouTube, clip.cafe, Sakugabooru, or a picture.</p>
+        <input id="linkIn" placeholder="https://…" spellcheck="false" aria-label="Link to import">
+        <div class="row" style="margin-top:7px"><button id="linkShots" class="primary">Add for shots</button><button id="linkSpeech">Add as speech</button><button id="linkSong" title="Replace the edit's song with this">Make it the song</button></div>
+      </div></details>
+      <details class="fxg" open><summary>Anime<small id="aniName"></small></summary><div class="fxb in" id="ani"></div></details>
+    </div>
+    <div class="wsMain">
+      <div class="wsHead">
+        <h2>Footage</h2>
+        <form class="wsFind" id="findForm"><span class="ico" id="findIco"></span><input id="findQ" maxlength="120" autocomplete="off" spellcheck="false"><button class="primary" id="findGo">Search</button></form>
+      </div>
+      <div class="sites" id="sites"></div>
+      <p class="hint" id="siteAbout"></p>
+      <div id="hits"></div>
+    </div>
+    <div class="wsPrev" id="fPrev">
+      <div class="pv16" id="fStage"><p class="hint">Click a result to watch it here.</p></div>
+      <b id="fNow"></b><small id="fNowSub"></small>
+      <div class="row" id="fActs"></div>
+    </div>
+  </section>
+
+  <section class="wsPage" id="pageSongs" hidden>
+    <div class="wsSide">
+      <details class="fxg" open><summary>The song in this edit</summary><div class="fxb in" id="songNow"></div></details>
+      <details class="fxg" open><summary>Moods</summary><div class="fxb in"><div class="chipsWrap" id="songMoods"></div></div></details>
+    </div>
+    <div class="wsMain">
+      <div class="wsHead">
+        <h2>Songs</h2>
+        <form class="wsFind" id="songForm"><span class="ico" id="songIco"></span><input id="songQ" maxlength="120" placeholder="A song, an artist, or a mood: phonk, slowed, sad edit audio…" autocomplete="off" spellcheck="false"><button class="primary" id="songGo">Search</button></form>
+      </div>
+      <div class="sites" id="songSites"></div>
+      <p class="hint" id="songAbout"></p>
+      <div id="songHits"></div>
+    </div>
+    <div class="wsPrev" id="sPrev">
+      <div class="pv16" id="sStage"><p class="hint">Click a song to hear it here.</p></div>
+      <b id="sNow"></b><small id="sNowSub"></small>
+      <div class="row" id="sActs"></div>
+    </div>
+  </section>
+</div>
+
+<div id="bottom">
+  <div id="grip" title="Drag to resize the timeline"></div>
+  <section class="panel" id="proj">
+    <div class="ptabs" id="ptabs">
+      <button data-pt="bin" class="on" title="Every shot found in this edit's footage">Project<em id="shotCount"></em></button>
+      <button data-pt="media" title="The clips this edit is cut from">Media<em id="clipCount"></em></button>
+      <span class="gap"></span><span class="pm" id="pmP"></span>
+    </div>
+    <div class="page on" id="pt-bin">
+      <div id="pbar">
+        <span class="filters" id="filters">
+          <button data-f="all" class="on">All</button><button data-f="used">In edit</button><button data-f="free">Unused</button><button data-f="face" title="Only shots with a face in them">Faces</button><button data-f="out">Hidden</button>
+        </span>
+        <button class="icon" id="viewMode" title="Switch between thumbnails and a list"></button>
+      </div>
+      <div class="scroll"><div id="shots"></div></div>
+    </div>
+    <div class="page" id="pt-media">
+      <div class="scroll">
+        <div class="mediahead"><span id="disk"></span><button id="refetch" title="Look for sharper footage of this film (up to 4K) and cut from that instead">Better footage</button><button id="goFootage" class="primary">Find more footage</button></div>
+        <div id="lib"></div>
+      </div>
+    </div>
+  </section>
+  <div class="vgrip" id="gripP" title="Drag to resize"></div>
+  <section id="tl">
+    <div id="tools" role="toolbar" aria-label="Timeline tools"></div>
+    <div id="tlmain">
+      <div id="tlbar">
+        <div id="tcbox"><span id="clock" title="Drag to scrub">0:00:00:00</span><span id="fnum"></span></div>
+        <button class="icon tog" id="snapBtn" title="Snap to edits, the playhead, markers and beats (S)"></button>
+        <button class="icon tog" id="linkBtn" title="Linked selection: the picture and the sound of a speech clip move together"></button>
+        <button class="icon" id="markBtn" title="Add a marker (M)"></button>
+        <span id="sel"></span>
+        <span class="gap"></span>
+        <button id="splitBtn" title="Cut every clip under the playhead (Ctrl+K)">Cut at playhead</button>
+        <button id="autoCut" title="Lay the montage out again on the song's beat">Auto-cut to the beat</button>
+      </div>
+      <div id="tlscroll"><div id="lane">
+        <div id="rrow">
+          <div id="cols"><span>Sequence</span><span class="gap"></span><button class="icon" id="addV" title="Add a video track"></button><button class="icon" id="addA" title="Add an audio track"></button></div>
+          <div id="ruler"></div>
+        </div>
+        <div id="layers"></div>
+        <div id="marq"></div>
+        <div id="snapline"></div>
+        <div id="tip"></div>
+        <div id="head"></div>
+      </div></div>
+      <div id="tlfoot">
+        <span id="keys"><kbd>V</kbd> select <kbd>C</kbd> razor <kbd>B</kbd> ripple <kbd>N</kbd> roll <kbd>Y</kbd> slip &nbsp;<kbd>Ctrl</kbd>-drag inserts &nbsp;<kbd>Shift</kbd>+<kbd>Del</kbd> ripple delete</span>
+        <span class="gap"></span>
+        <input type="range" id="zoom" min="0" max="100" value="0" title="Zoom the timeline (= and -, or Alt + scroll)">
+      </div>
+    </div>
+  </section>
+</div>
+<div id="drag"></div>
+<div id="prefs" hidden><nav id="prefNav"></nav><main id="prefBody"></main></div>
+<div id="ctx"></div>
+<div id="toasts"></div>
+<div id="fatal"><div><p id="fatalText"></p><a href="/">Back to your projects</a></div></div>
+

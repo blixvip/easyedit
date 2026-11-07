@@ -8,6 +8,7 @@ to it and remembers what each added file is: the site, the page it came from, it
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -42,6 +43,9 @@ SITES = [
               "Cut shots from one, or make it the song."},
     {"id": "youtube", "name": "YouTube", "roles": ["montage", "speech", "music"],
      "about": "Scenepacks and full scenes, up to 4K. The sharpest free footage."},
+    {"id": "songs", "name": "Songs", "roles": ["music"],
+     "about": "Songs and edit audios: type a song, an artist or a mood (phonk, slowed, sad edit audio). "
+              "Make one the song the edit is cut to."},
     {"id": "clipcafe", "name": "clip.cafe", "roles": ["speech", "montage"],
      "about": "Search by the words said. Sharpness varies from clip to clip: read the numbers once it is in."},
     {"id": "sakuga", "name": "Sakugabooru", "roles": ["montage"], "anime": True,
@@ -93,6 +97,17 @@ def _youtube(query: str, movie: str, ani: dict | None) -> list[dict]:
     hits = fetch.search(query or f"{movie} scenepack 4K", 14, 8, 3600)
     # reactions, reviews and other people's edits sink; the order YouTube gave is kept otherwise
     hits.sort(key=lambda h: -min(0.0, fetch._title_score(h["title"], "montage", query or movie)))
+    return [{"site": "youtube", "id": h["id"], "title": h["title"], "sub": "", "kind": "video",
+             "thumb": f"https://i.ytimg.com/vi/{h['id']}/mqdefault.jpg", "page": h["url"],
+             "duration": h["duration"]} for h in hits]
+
+
+def _songs(query: str, movie: str, ani: dict | None) -> list[dict]:
+    from . import fetch
+    q = query or f"{movie} edit audio"
+    if not re.search(r"\b(audio|song|remix|slowed|sped|phonk|music|ost|soundtrack|lyrics|instrumental)\b", q, re.I):
+        q += " audio"   # the song itself, not a music video with talking over it
+    hits = fetch.search(q, 14, 30, 600)
     return [{"site": "youtube", "id": h["id"], "title": h["title"], "sub": "", "kind": "video",
              "thumb": f"https://i.ytimg.com/vi/{h['id']}/mqdefault.jpg", "page": h["url"],
              "duration": h["duration"]} for h in hits]
@@ -227,7 +242,7 @@ def _filmgrab(query: str, movie: str, ani: dict | None) -> list[dict]:
     return out[:90]
 
 
-_SEARCH = {"youtube": _youtube, "clipcafe": _clipcafe, "sakuga": _sakuga, "filmgrab": _filmgrab,
+_SEARCH = {"youtube": _youtube, "songs": _songs, "clipcafe": _clipcafe, "sakuga": _sakuga, "filmgrab": _filmgrab,
            "twixtor": _twixtor, "themes": _themes}
 
 
@@ -288,9 +303,14 @@ def _facts(media: Path) -> dict:
     return _probed[key]
 
 
+def _youtube_id(media: Path) -> str | None:
+    match = re.fullmatch(r"([\w-]{11})(?:\.hq-\d+p-[a-f0-9]{8})?", media.stem)
+    return match.group(1) if match else None
+
+
 def _yt(job: Path, media: Path) -> bool:
     """A download the pipeline made from YouTube: it is named by the video's id."""
-    return bool(re.fullmatch(r"[\w-]{11}", media.stem)) and (job / "downloads") in media.parents
+    return bool(_youtube_id(media)) and (job / "downloads") in media.parents
 
 
 def _titles(job: Path, ids: list[str]) -> dict:
@@ -317,7 +337,7 @@ def library(job: Path) -> dict:
     quote = job / "quote.json"
     said = read_json(quote).get("clip", 0) if quote.exists() else 0
     rows: dict[str, dict] = {}
-    names = _titles(job, [Path(f).stem for r in ("speech", "montage", "music") for f in src.get(r, [])
+    names = _titles(job, [_youtube_id(Path(f)) for r in ("speech", "montage", "music") for f in src.get(r, [])
                           if _yt(job, Path(f)) and not man.get(f, {}).get("title")])
     for role in ("speech", "montage", "music"):
         for i, f in enumerate(src.get(role, [])):
@@ -327,9 +347,9 @@ def library(job: Path) -> dict:
                 site = "youtube" if _yt(job, media) and m.get("site") in (None, "file") else m.get("site") or "file"
                 row = rows[f] = {
                     "path": f, "name": media.name, "sub": m.get("sub", ""),
-                    "title": m.get("title") or names.get(media.stem) or media.stem,
+                    "title": m.get("title") or names.get(_youtube_id(media)) or media.stem,
                     "site": site, "siteName": _NAMES.get(site, site), "added": bool(m),
-                    "page": m.get("page") or (f"https://www.youtube.com/watch?v={media.stem}"
+                    "page": m.get("page") or (f"https://www.youtube.com/watch?v={_youtube_id(media)}"
                                               if site == "youtube" else None),
                     "roles": [], **_facts(media)}
             row["roles"].append({"role": role, "index": i})
@@ -409,6 +429,32 @@ def _from_link(link: str) -> dict:
     return {"site": "web", "url": link, "page": link}
 
 
+def _local_source(job: Path, media: Path) -> Path:
+    """Give conflicting local filenames their own cache key while preserving both originals."""
+    media = media.resolve()
+    src = read_json(job / "sources.json")
+    known = {Path(f).resolve() for role in ROLES for f in src.get(role, [])}
+    known.update(Path(f).resolve() for f in _manifest(job))
+    if media in known or not any(p.stem.casefold() == media.stem.casefold() for p in known):
+        return media
+    stat = media.stat()
+    identity = f"{media}:{stat.st_size}:{stat.st_mtime_ns}"
+    suffix = hashlib.sha256(identity.encode()).hexdigest()[:12]
+    dest = job / "downloads" / "imports" / f"{media.stem[:80]}-{suffix}{media.suffix}"
+    if dest.is_file():
+        return dest
+    if shutil.disk_usage(job).free < stat.st_size + 2 * 2**30:
+        raise ValueError("There is not enough free space to import this file without replacing another clip.")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_name(dest.name + ".part")
+    try:
+        shutil.copyfile(media, part)
+        part.replace(dest)
+    finally:
+        part.unlink(missing_ok=True)
+    return dest
+
+
 def _bring(job: Path, item: dict, role: str) -> tuple[Path, dict]:
     """Get the item onto this computer. Returns the file and what to remember about it."""
     if item.get("site") == "link":
@@ -417,7 +463,7 @@ def _bring(job: Path, item: dict, role: str) -> tuple[Path, dict]:
     meta = {"site": site, "id": str(item.get("id") or ""), "title": str(item.get("title") or "")[:200],
             "sub": str(item.get("sub") or "")[:120], "page": item.get("page"), "whole": True}
     if site == "file":
-        return Path(item["url"]), meta
+        return _local_source(job, Path(item["url"])), meta
     if site == "themes":
         audio = str(item.get("audio") or "")
         if not re.fullmatch(r"[\w.-]{1,120}\.webm", meta["id"]):
@@ -665,8 +711,14 @@ def restore(job: Path) -> int:
                                 "montage")
             elif site == "web" and m.get("page"):
                 got = fetch.download(m["page"], media.parent, audio_only=song)
-            elif re.fullmatch(r"[\w-]{11}", media.stem):   # the pipeline names a YouTube download by the video's id
-                got = fetch.download(f"https://www.youtube.com/watch?v={media.stem}", media.parent, audio_only=song)
+            elif _youtube_id(media):
+                upgraded = ".hq-" in media.stem
+                got = fetch.download(f"https://www.youtube.com/watch?v={_youtube_id(media)}", media.parent,
+                                     audio_only=song, upgrade=upgraded)
+                if upgraded and got != media and got.suffix == media.suffix:
+                    # Keep an upgraded source's timeline key when restoring a missing copy.
+                    shutil.copy2(got, media)
+                    got = media
             else:
                 raise ValueError("it was a file on this computer, not a download")
             got = got.resolve()
