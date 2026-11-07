@@ -1,3 +1,4 @@
+<!-- Not in the contributor Discord yet? Join before your PR: https://discord.gg/wJfHQXfEMM -->
 ## What does this change?
 
 <!-- A short description. Link the issue it fixes, e.g. "Fixes #12". -->
@@ -19,4 +20,4 @@
 
 <!-- Which OS did you test on? Windows is the best-tested; macOS and Linux reports are especially useful. -->
 
-<!-- Questions? Ask in the Discord: https://discord.gg/zEB4VjmfSb -->
+<!-- Questions? Ask in the Discord: https://discord.gg/wJfHQXfEMM -->

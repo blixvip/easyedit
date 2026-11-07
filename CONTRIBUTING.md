@@ -1,6 +1,8 @@
 # Contributing to easyedit
 
-Thanks for helping! Questions and ideas are welcome in the **[Discord](https://discord.gg/zEB4VjmfSb)**, and bugs go in [GitHub issues](https://github.com/blixvip/easyedit/issues/new/choose).
+> 💬 **Before you open a PR, join the [blix open source Discord](https://discord.gg/wJfHQXfEMM).** It's the home for contributors across every blixvip repo: ask questions, run ideas by us, and talk through your PR.
+
+Thanks for helping! Questions and ideas are welcome in the **[Discord](https://discord.gg/wJfHQXfEMM)**, and bugs go in [GitHub issues](https://github.com/blixvip/easyedit/issues/new/choose).
 
 ## Finding something to work on
 
@@ -59,4 +61,4 @@ The README currently says `python -m pytest`. That's wrong — pytest isn't in `
 - `easyedit/doctor.py`: the single source of truth for system requirements.
 - Stage modules: `fetch.py` (download), `transcribe.py` (Whisper), `quote.py` (line breaking), `beats.py` (onset detection), `shots.py` + `vision.py` (shot scoring and framing), `plan.py` (the edit plan), `design.py`, `render.py` (HyperFrames + Chrome).
 
-Made an edit with it? Show it off in the [Discord](https://discord.gg/zEB4VjmfSb).
+Made an edit with it? Show it off in the [Discord](https://discord.gg/wJfHQXfEMM).
