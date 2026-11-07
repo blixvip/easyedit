@@ -61,6 +61,8 @@ def main(argv=None) -> None:
         preview_range(a.preview)
     for b in ("ffmpeg", "ffprobe", "node"):
         need(b)
+    if not a.no_render and not render.CLI.exists():
+        die("hyperframes not installed: run `npm install` in the easyedit folder")
     if a.draft:
         a.fps = 30
     job = JOBS / slugify(a.movie)
