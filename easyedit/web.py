@@ -202,6 +202,8 @@ def job_info(job: Path) -> dict:
     plan = read_json(job / "plan.json") if (job / "plan.json").exists() else {}
     run = _runs.get(job.name)
     running = bool(run and run["proc"].poll() is None)
+    if run and not running:
+        _close_run_fh(run)
     info = {
         "slug": job.name,
         "title": plan.get("title") or job.name.replace("-", " ").title(),
@@ -225,6 +227,14 @@ def job_info(job: Path) -> dict:
     return info
 
 
+def _close_run_fh(run: dict | None) -> None:
+    if run and run.get("fh") and not run["fh"].closed:
+        try:
+            run["fh"].close()
+        except Exception:
+            pass
+
+
 def start_job(body: dict) -> dict:
     movie = (body.get("movie") or "").strip()
     if not movie:
@@ -234,6 +244,8 @@ def start_job(body: dict) -> dict:
         run = _runs.get(slug)
         if run and run["proc"].poll() is None:
             return {"slug": slug, "already": True}
+        if run:
+            _close_run_fh(run)
         argv = [sys.executable, "-u", "-m", "easyedit", movie]
         for flag in ("speech", "music"):
             if body.get(flag):
@@ -255,19 +267,37 @@ def start_job(body: dict) -> dict:
         proc = subprocess.Popen(argv, cwd=ROOT, stdout=fh, stderr=subprocess.STDOUT,
                                 env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         _runs[slug] = {"proc": proc, "fh": fh, "started": time.time(), "argv": argv}
+
+        def _reap():
+            try:
+                proc.wait()
+            except Exception:
+                pass
+            finally:
+                _close_run_fh({"fh": fh})
+
+        threading.Thread(target=_reap, daemon=True).start()
     return {"slug": slug, "started": True}
 
 
 def stop_job(slug: str) -> bool:
     run = _runs.get(slug)
-    if not run or run["proc"].poll() is not None:
+    if not run:
         return False
-    # kill the pipeline and any hyperframes renderers it spawned
-    if os.name == "nt":
-        subprocess.run(["taskkill", "/T", "/F", "/PID", str(run["proc"].pid)], capture_output=True)
-    else:
-        run["proc"].terminate()
-    return True
+    if run["proc"].poll() is None:
+        # kill the pipeline and any hyperframes renderers it spawned
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(run["proc"].pid)], capture_output=True)
+        else:
+            run["proc"].terminate()
+        try:
+            run["proc"].wait(timeout=5)
+        except Exception:
+            pass
+        _close_run_fh(run)
+        return True
+    _close_run_fh(run)
+    return False
 
 
 def reveal_job(job: Path | None) -> dict:
@@ -364,8 +394,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "unknown edit"}, 404)
             log = job / "run.log"
             text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
+            run = _runs.get(job.name)
+            running = bool(run and run["proc"].poll() is None)
+            if run and not running:
+                _close_run_fh(run)
             return self._json({"log": text[-8000:], **progress_of(job.name, log),
-                               "running": bool(_runs.get(job.name) and _runs[job.name]["proc"].poll() is None)})
+                               "running": running})
         if path.startswith("/thumb/"):
             job = safe_job(path[len("/thumb/"):].removesuffix(".jpg"))
             thumb = thumb_of(job) if job and job.is_dir() else None
@@ -413,7 +447,11 @@ class Handler(BaseHTTPRequestHandler):
                 job = safe_job(body.get("slug", ""))
                 if job and job.is_dir():
                     stop_job(job.name)
+                    run = _runs.pop(job.name, None)
+                    _close_run_fh(run)
                     shutil.rmtree(job, ignore_errors=True)
+                    if job.exists():
+                        return self._json({"deleted": False}, 400)
                     return self._json({"deleted": True})
                 return self._json({"deleted": False}, 400)
         except Exception as e:
