@@ -1,6 +1,8 @@
 """Movie title -> search plan (which scene to caption, what to montage, what song)."""
 from __future__ import annotations
 
+import re
+
 from .llm import ask_json
 from .util import log
 
@@ -29,6 +31,7 @@ Return JSON:
 Choose bright, saturated palette colors that read on dark footage."""
 
 DEFAULT_PALETTE = {"positive": "#8dff8a", "negative": "#ff3b57", "gold": "#ffe27a", "cool": "#9ef3ff"}
+HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def make_plan(title: str, provider: str) -> dict:
@@ -48,8 +51,16 @@ def make_plan(title: str, provider: str) -> dict:
         log("plan: using fallback search queries")
         return fallback
     plan = {**fallback, **{k: v for k, v in reply.items() if v}, "source": "llm"}
-    plan["palette"] = {**DEFAULT_PALETTE, **(reply.get("palette") or {})}
-    if not isinstance(plan["montage_queries"], list) or not plan["montage_queries"]:
-        plan["montage_queries"] = fallback["montage_queries"]
+    raw_palette = reply.get("palette")
+    palette = dict(DEFAULT_PALETTE)
+    if isinstance(raw_palette, dict):
+        for key in DEFAULT_PALETTE:
+            value = raw_palette.get(key)
+            if isinstance(value, str) and HEX_COLOR.match(value):
+                palette[key] = value
+    plan["palette"] = palette
+    queries = plan["montage_queries"]
+    queries = [q for q in queries if isinstance(q, str) and q.strip()] if isinstance(queries, list) else []
+    plan["montage_queries"] = queries or fallback["montage_queries"]
     log(f"plan: {plan['speech_scene']}")
     return plan
