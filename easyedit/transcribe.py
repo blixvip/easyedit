@@ -36,11 +36,20 @@ def release() -> None:
             pass
 
 
+def model_name(language: str | None = None) -> str:
+    return os.environ.get("EASYEDIT_WHISPER", "distil-large-v3" if language in (None, "en") else "large-v3")
+
+
+def cache_for(cache: Path, language: str | None = None) -> Path:
+    """The transcript cache file for this language and Whisper model, so a change to either re-transcribes."""
+    return cache.with_name(f"{cache.stem}-{language or 'en'}-{model_name(language)}{cache.suffix}")
+
+
 def transcribe(media: Path, cache: Path, language: str | None = None) -> list[dict]:
+    cache = cache_for(cache, language)
     if cache.exists():
         return read_json(cache)
-    name = os.environ.get("EASYEDIT_WHISPER", "distil-large-v3" if language in (None, "en") else "large-v3")
-    model = _load(name)
+    model = _load(model_name(language))
     segments, _ = model.transcribe(
         str(media), language=language or "en", word_timestamps=True, vad_filter=True,
         condition_on_previous_text=False, beam_size=5,
