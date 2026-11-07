@@ -136,12 +136,12 @@ def report() -> dict:
 
 
 def main() -> None:
+    for stream in (sys.stdout,):
+        stream.reconfigure(encoding="utf-8", errors="replace")
     r = report()
     if "--json" in sys.argv:
         print(json.dumps(r, indent=2))
-        return
-    for stream in (sys.stdout,):
-        stream.reconfigure(encoding="utf-8", errors="replace")
+        sys.exit(0 if r["ready"] else 1)
     print("AI accounts (one is enough; without one easyedit falls back to heuristics)")
     for a in r["accounts"]:
         mark = "ok " if a["connected"] else "-- "
