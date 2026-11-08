@@ -31,6 +31,11 @@ def preview_range(preview, frames=None, fps=None):
     return (start, end)
 
 
+def pick_is_current(pick: dict, speech_files, transcripts) -> bool:
+    """True when quote.json was picked from these speech files and these transcripts (language/model included)."""
+    return pick.get("files") == [str(f) for f in speech_files] and pick.get("transcripts") == transcripts
+
+
 def parse(argv=None):
     p = argparse.ArgumentParser(prog="easyedit", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -106,11 +111,13 @@ def main(argv=None) -> None:
 
     pick_file = job / "quote.json"
     clips = [transcribe.transcribe(f, job / "work" / f"words-{f.stem}.json", a.language) for f in speech_files]
-    if pick_file.exists() and not a.fresh and read_json(pick_file).get("files") == [str(f) for f in speech_files]:
+    transcripts = [str(transcribe.cache_for(job / "work" / f"words-{f.stem}.json", a.language)) for f in speech_files]
+    if pick_file.exists() and not a.fresh and pick_is_current(read_json(pick_file), speech_files, transcripts):
         q = read_json(pick_file)
     else:
         q = quote.choose(clips, plan, a.llm)
         q["files"] = [str(f) for f in speech_files]
+        q["transcripts"] = transcripts
         write_json(pick_file, q)
 
     transcribe.release()
