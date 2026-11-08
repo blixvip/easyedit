@@ -12,6 +12,7 @@ import mimetypes
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -301,8 +302,10 @@ def start_job(body: dict) -> dict:
         log = job / "run.log"
         fh = log.open("w", encoding="utf-8")
         proc = subprocess.Popen(argv, cwd=ROOT, stdout=fh, stderr=subprocess.STDOUT,
-                                env={**os.environ, "PYTHONIOENCODING": "utf-8"})
-        _runs[slug] = {"proc": proc, "fh": fh, "started": time.time(), "argv": argv}
+                                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                                start_new_session=_POSIX)
+        _runs[slug] = {"proc": proc, "fh": fh, "started": time.time(), "argv": argv,
+                       "pgid": proc.pid if _POSIX else None}
 
         def _reap():
             try:
@@ -316,24 +319,67 @@ def start_job(body: dict) -> dict:
     return {"slug": slug, "started": True}
 
 
+_POSIX = os.name != "nt"  # module flag, so tests can pick a platform without patching os.name
+STOP_GRACE_SECONDS = 5.0
+
+
+def _signal_group(pgid: int, sig: int) -> None:
+    try:
+        os.killpg(pgid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def _group_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        # PermissionError: the id now belongs to a group we don't own, so ours is gone
+        return False
+
+
+def _wait_group_gone(pgid: int, grace: float) -> bool:
+    deadline = time.monotonic() + grace
+    while _group_alive(pgid):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.1)
+    return True
+
+
 def stop_job(slug: str) -> bool:
     run = _runs.get(slug)
     if not run:
         return False
-    if run["proc"].poll() is None:
+    proc = run["proc"]
+    running = proc.poll() is None
+    pgid = run.get("pgid")
+    if _POSIX and isinstance(pgid, int) and pgid > 1:
+        # the run is its own process group (start_job). Renderers can outlive a parent that
+        # has already exited, so the group is signalled and waited on whether or not it is running.
+        _signal_group(pgid, signal.SIGTERM)
+        if running:
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+        # wait until no renderer is left, so the caller can delete the job folder safely
+        if not _wait_group_gone(pgid, STOP_GRACE_SECONDS):
+            _signal_group(pgid, signal.SIGKILL)
+            _wait_group_gone(pgid, STOP_GRACE_SECONDS)
+    elif running:
         # kill the pipeline and any hyperframes renderers it spawned
-        if os.name == "nt":
-            subprocess.run(["taskkill", "/T", "/F", "/PID", str(run["proc"].pid)], capture_output=True)
+        if _POSIX:
+            proc.terminate()  # no recorded process group: fall back to the parent only
         else:
-            run["proc"].terminate()
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
         try:
-            run["proc"].wait(timeout=5)
+            proc.wait(timeout=5)
         except Exception:
             pass
-        _close_run_fh(run)
-        return True
     _close_run_fh(run)
-    return False
+    return running
 
 
 def reveal_job(job: Path | None) -> dict:
@@ -508,6 +554,11 @@ def main() -> None:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        # runs sit in their own process group, so Ctrl+C no longer reaches them: stop them here.
+        # This does not run if the server is killed outright (SIGKILL, crash); those runs are orphaned.
+        for slug in list(_runs):
+            stop_job(slug)
 
 
 if __name__ == "__main__":

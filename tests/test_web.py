@@ -1,5 +1,6 @@
 """Regression tests for the local web API."""
 import json
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -7,6 +8,29 @@ from pathlib import Path
 from unittest import mock
 
 from easyedit import web
+
+SIGKILL = getattr(signal, "SIGKILL", 9)
+
+
+class FakeGroup:
+    """Stands in for os.killpg: a process group that dies after N liveness checks or on SIGKILL."""
+
+    def __init__(self, alive_polls=0, dies_on_sigkill=False):
+        self.alive_polls = alive_polls
+        self.dies_on_sigkill = dies_on_sigkill
+        self.sent = []
+        self.killed = False
+
+    def killpg(self, pgid, sig):
+        if sig == 0:
+            if self.killed or self.alive_polls <= 0:
+                raise ProcessLookupError()
+            self.alive_polls -= 1
+            return None
+        self.sent.append((pgid, sig))
+        if sig == SIGKILL and self.dies_on_sigkill:
+            self.killed = True
+        return None
 
 
 class RevealJobTest(unittest.TestCase):
@@ -47,17 +71,76 @@ class StopJobTest(unittest.TestCase):
 
     def test_stop_job_closes_fh_and_waits_for_running_proc(self):
         proc = mock.MagicMock()
+        proc.pid = 4321
         proc.poll.return_value = None
         fh = mock.MagicMock()
         fh.closed = False
         web._runs["test-slug"] = {"proc": proc, "fh": fh, "started": 0.0, "argv": []}
 
-        stopped = web.stop_job("test-slug")
+        with mock.patch.object(web, "_POSIX", False, create=True), \
+                mock.patch.object(web.subprocess, "run") as run:
+            stopped = web.stop_job("test-slug")
 
         self.assertTrue(stopped)
-        proc.terminate.assert_called_once()
+        run.assert_called_once()
+        self.assertIn("taskkill", run.call_args.args[0])
         proc.wait.assert_called_once_with(timeout=5)
         fh.close.assert_called_once()
+
+    def test_stop_job_signals_process_group_on_posix(self):
+        proc = mock.MagicMock()
+        proc.pid = 4321
+        proc.poll.return_value = None
+        fh = mock.MagicMock()
+        fh.closed = False
+        web._runs["test-slug"] = {"proc": proc, "fh": fh, "started": 0.0, "argv": [], "pgid": 4321}
+        group = FakeGroup(alive_polls=1)
+        killpg = mock.MagicMock(side_effect=group.killpg)
+
+        with mock.patch.object(web, "_POSIX", True, create=True), \
+                mock.patch.object(web.os, "killpg", create=True, new=killpg):
+            stopped = web.stop_job("test-slug")
+
+        self.assertTrue(stopped)
+        killpg.assert_any_call(4321, signal.SIGTERM)
+        proc.terminate.assert_not_called()
+        fh.close.assert_called_once()
+
+    def test_stop_job_signals_group_even_when_parent_already_exited(self):
+        proc = mock.MagicMock()
+        proc.pid = 4321
+        proc.poll.return_value = 0
+        fh = mock.MagicMock()
+        fh.closed = False
+        web._runs["test-slug"] = {"proc": proc, "fh": fh, "started": 0.0, "argv": [], "pgid": 4321}
+        group = FakeGroup(alive_polls=1)
+        killpg = mock.MagicMock(side_effect=group.killpg)
+
+        with mock.patch.object(web, "_POSIX", True, create=True), \
+                mock.patch.object(web.os, "killpg", create=True, new=killpg):
+            stopped = web.stop_job("test-slug")
+
+        self.assertFalse(stopped)
+        killpg.assert_any_call(4321, signal.SIGTERM)
+        self.assertEqual(group.alive_polls, 0)
+        fh.close.assert_called_once()
+
+    def test_stop_job_escalates_to_sigkill_when_group_ignores_sigterm(self):
+        proc = mock.MagicMock()
+        proc.pid = 4321
+        proc.poll.return_value = None
+        fh = mock.MagicMock()
+        fh.closed = False
+        web._runs["test-slug"] = {"proc": proc, "fh": fh, "started": 0.0, "argv": [], "pgid": 4321}
+        group = FakeGroup(alive_polls=10**6, dies_on_sigkill=True)
+
+        with mock.patch.object(web, "_POSIX", True, create=True), \
+                mock.patch.object(web, "STOP_GRACE_SECONDS", 0.0), \
+                mock.patch.object(web.signal, "SIGKILL", SIGKILL, create=True), \
+                mock.patch.object(web.os, "killpg", create=True, side_effect=group.killpg):
+            web.stop_job("test-slug")
+
+        self.assertEqual(group.sent, [(4321, signal.SIGTERM), (4321, SIGKILL)])
 
     def test_stop_job_closes_fh_for_already_finished_proc(self):
         proc = mock.MagicMock()
@@ -71,6 +154,27 @@ class StopJobTest(unittest.TestCase):
         self.assertFalse(stopped)
         proc.terminate.assert_not_called()
         fh.close.assert_called_once()
+
+    def test_stop_job_never_signals_a_group_it_did_not_record(self):
+        # A run without a recorded pgid (or a bogus one like 1) must not reach os.killpg:
+        # a MagicMock pid converts to 1, and killpg(1, ...) once took down the CI runner.
+        for pgid in (None, 0, 1, mock.MagicMock()):
+            proc = mock.MagicMock()
+            proc.poll.return_value = None
+            fh = mock.MagicMock()
+            fh.closed = False
+            web._runs["test-slug"] = {"proc": proc, "fh": fh, "started": 0.0, "argv": [], "pgid": pgid}
+            killpg = mock.MagicMock()
+            with mock.patch.object(web, "_POSIX", True, create=True), \
+                    mock.patch.object(web.os, "killpg", create=True, new=killpg):
+                self.assertTrue(web.stop_job("test-slug"))
+            killpg.assert_not_called()
+            proc.terminate.assert_called_once()
+
+    def test_signal_group_ignores_permission_error(self):
+        with mock.patch.object(web.os, "killpg", create=True, side_effect=PermissionError):
+            web._signal_group(4321, signal.SIGTERM)
+            self.assertFalse(web._group_alive(4321))
 
     def test_stop_job_nonexistent_slug(self):
         self.assertFalse(web.stop_job("nonexistent"))
@@ -347,6 +451,35 @@ class JobOptionValidationTest(unittest.TestCase):
         web.Handler.do_POST(handler)
 
         handler._json.assert_called_once_with({"error": "request body must be a JSON object"}, 400)
+
+
+class StartJobSessionTest(unittest.TestCase):
+    def tearDown(self):
+        web._runs.clear()
+
+    def test_start_job_puts_run_in_its_own_session_on_posix(self):
+        jobs_root = Path(tempfile.mkdtemp()).resolve()
+        with mock.patch.object(web, "JOBS", jobs_root), \
+                mock.patch.object(web, "_POSIX", True, create=True), \
+                mock.patch.object(web.subprocess, "Popen") as popen:
+            web.start_job({"movie": "Test Movie"})
+
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_stop_all_runs_when_server_exits(self):
+        proc = mock.MagicMock()
+        proc.poll.return_value = None
+        web._runs["test-slug"] = {"proc": proc, "fh": mock.MagicMock(), "started": 0.0, "argv": []}
+        server = mock.MagicMock()
+        server.serve_forever.side_effect = KeyboardInterrupt
+
+        with mock.patch.object(web, "setup_report"), \
+                mock.patch.object(web, "ThreadingHTTPServer", return_value=server), \
+                mock.patch.object(web, "stop_job") as stop, \
+                mock.patch.object(web.sys, "argv", ["easyedit.web", "--no-browser"]):
+            web.main()
+
+        stop.assert_called_once_with("test-slug")
 
 
 if __name__ == "__main__":
