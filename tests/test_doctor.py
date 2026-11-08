@@ -1,4 +1,6 @@
 """Regression tests for setup diagnostics."""
+import contextlib
+import io
 import unittest
 from unittest import mock
 
@@ -25,6 +27,17 @@ class DoctorToolsTest(unittest.TestCase):
 
         self.assertFalse(ffmpeg["ok"])
         self.assertEqual(ffmpeg["detail"], "ffmpeg missing")
+
+    def test_json_mode_exit_code_follows_ready(self):
+        for ready, code in ((False, 1), (True, 0)):
+            report = {"ready": ready, "accounts": [], "tools": []}
+            with self.subTest(ready=ready), \
+                    mock.patch.object(doctor, "report", return_value=report), \
+                    mock.patch.object(doctor.sys, "argv", ["doctor", "--json"]), \
+                    contextlib.redirect_stdout(io.TextIOWrapper(io.BytesIO(), encoding="utf-8")):
+                with self.assertRaises(SystemExit) as cm:
+                    doctor.main()
+                self.assertEqual(cm.exception.code, code)
 
 
 if __name__ == "__main__":
