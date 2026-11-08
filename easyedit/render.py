@@ -29,9 +29,29 @@ def ensure_fonts(dest: Path) -> None:
         shutil.copy2(cached, dest / name)
 
 
-def prepare(render_dir: Path) -> None:
-    ensure_fonts(render_dir / "fonts")
+def prepare(render_dir: Path, *, allow_missing_fonts: bool = False) -> None:
+    try:
+        ensure_fonts(render_dir / "fonts")
+    except Exception as exc:
+        if not allow_missing_fonts:
+            raise
+        log(f"preview fonts unavailable; the preview can still be opened, but text may use fallback fonts: {exc}")
     shutil.copy2(ROOT / "template" / "film.js", render_dir / "film.js")
+
+
+def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str) -> None:
+    html = (ROOT / "template" / "index.html").read_text(encoding="utf-8")
+    html = (html.replace("__DURATION__", f"{dur:.4f}").replace("__FPS__", str(fps))
+            .replace("__MEDIA_START__", f"{start:.4f}").replace("__SEGMENT_START__", f"{start:.4f}"))
+    (render_dir / name).write_text(html, encoding="utf-8")
+
+
+def prepare_preview(job: Path, edit: dict) -> Path:
+    """Write the full HyperFrames composition without starting a video render."""
+    render_dir = job / "render"
+    prepare(render_dir, allow_missing_fonts=True)
+    section_html(render_dir, 0, edit["frames"] / edit["fps"], edit["fps"], "index.html")
+    return render_dir
 
 
 def encoder() -> list[str]:
@@ -46,13 +66,6 @@ def encoder() -> list[str]:
     except Exception:
         pass
     return ["-c:v", "libx264", "-preset", "slow", "-crf", "19"]
-
-
-def section_html(render_dir: Path, start: float, dur: float, fps: int, name: str) -> None:
-    html = (ROOT / "template" / "index.html").read_text(encoding="utf-8")
-    html = (html.replace("__DURATION__", f"{dur:.4f}").replace("__FPS__", str(fps))
-            .replace("__MEDIA_START__", f"{start:.4f}").replace("__SEGMENT_START__", f"{start:.4f}"))
-    (render_dir / name).write_text(html, encoding="utf-8")
 
 
 def render(job: Path, edit: dict, out: Path, quality: str = "high",
@@ -115,7 +128,6 @@ def render(job: Path, edit: dict, out: Path, quality: str = "high",
            "-i", sound, "-map", "0:v", "-map", "1:a", "-shortest", "-c:a", "aac", "-b:a", "256k"]
     if only:
         cmd += ["-af", f"atrim=start={a0 / fps:.3f},asetpts=PTS-STARTPTS"]
-    # the section files are near-lossless; re-encode once for a shareable file
     cmd += encoder() + ["-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)]
     run(cmd)
     log(f"done: {out} ({probe(out)['duration']:.2f}s)")
