@@ -286,5 +286,68 @@ class RefreshFocusTest(unittest.TestCase):
                          f"refresh must restore keyboard focus to the same-attribute button: {result}")
 
 
+class JobOptionValidationTest(unittest.TestCase):
+    def test_valid_options_match_cli_domains(self):
+        for body in (
+            {"fps": 24, "llm": "auto", "montage_length": 1, "hero_length": 0.5},
+            {"fps": "30", "llm": "claude", "montage_length": "21.5", "hero_length": "3.4"},
+            {"fps": 60, "llm": "codex", "montage_length": 21, "hero_length": 3.4},
+            {"llm": "none"},
+        ):
+            with self.subTest(body=body):
+                web.validate_job_options(body)
+
+    def test_invalid_fps_values_are_rejected(self):
+        for value in ("abc", "24.0", 24.0, 25, 0, -30, True, [], {}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "^fps must be one of 24, 30, or 60$"):
+                    web.validate_job_options({"fps": value})
+
+    def test_invalid_llm_values_are_rejected(self):
+        for value in ("gpt4", "GPT", "", True, [], {}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "^llm must be one of auto, claude, codex, or none$"):
+                    web.validate_job_options({"llm": value})
+
+    def test_non_positive_and_non_finite_lengths_are_rejected(self):
+        for field in ("montage_length", "hero_length"):
+            for value in ("abc", 0, -5, float("inf"), float("-inf"), float("nan"), True, [], {}):
+                with self.subTest(field=field, value=value):
+                    with self.assertRaisesRegex(ValueError, f"^{field} must be a positive number$"):
+                        web.validate_job_options({field: value})
+
+    def test_api_returns_field_specific_400_without_starting_child(self):
+        for body, message in (
+            ({"movie": "X", "fps": "abc"}, "fps must be one of 24, 30, or 60"),
+            ({"movie": "X", "llm": "gpt4"}, "llm must be one of auto, claude, codex, or none"),
+            ({"movie": "X", "montage_length": "-5"}, "montage_length must be a positive number"),
+            ({"movie": "X", "hero_length": "0"}, "hero_length must be a positive number"),
+        ):
+            with self.subTest(body=body), mock.patch.object(web.subprocess, "Popen") as popen:
+                payload = json.dumps(body).encode()
+                handler = mock.MagicMock()
+                handler.path = "/api/new"
+                handler.headers = {"Content-Length": str(len(payload))}
+                handler.rfile.read.return_value = payload
+                handler._json = mock.MagicMock()
+
+                web.Handler.do_POST(handler)
+
+                handler._json.assert_called_once_with({"error": message}, 400)
+                popen.assert_not_called()
+
+    def test_api_rejects_non_object_json_body(self):
+        payload = b'["X"]'
+        handler = mock.MagicMock()
+        handler.path = "/api/new"
+        handler.headers = {"Content-Length": str(len(payload))}
+        handler.rfile.read.return_value = payload
+        handler._json = mock.MagicMock()
+
+        web.Handler.do_POST(handler)
+
+        handler._json.assert_called_once_with({"error": "request body must be a JSON object"}, 400)
+
+
 if __name__ == "__main__":
     unittest.main()

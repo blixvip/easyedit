@@ -7,6 +7,7 @@ Standard library only - no Flask, no build step.
 from __future__ import annotations
 
 import json
+import math
 import mimetypes
 import os
 import re
@@ -235,7 +236,42 @@ def _close_run_fh(run: dict | None) -> None:
             pass
 
 
+def validate_job_options(body: dict) -> None:
+    """Reject invalid CLI options before starting a background subprocess."""
+    if not isinstance(body, dict):
+        raise ValueError("request body must be a JSON object")
+
+    if "fps" in body and body["fps"] is not None:
+        value = body["fps"]
+        try:
+            if isinstance(value, bool) or isinstance(value, float):
+                raise ValueError
+            fps = int(value)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("fps must be one of 24, 30, or 60") from None
+        if fps not in (24, 30, 60):
+            raise ValueError("fps must be one of 24, 30, or 60")
+
+    if "llm" in body and body["llm"] is not None:
+        if body["llm"] not in ("auto", "claude", "codex", "none"):
+            raise ValueError("llm must be one of auto, claude, codex, or none")
+
+    for field in ("montage_length", "hero_length"):
+        if field not in body or body[field] is None:
+            continue
+        value = body[field]
+        try:
+            if isinstance(value, bool):
+                raise ValueError
+            length = float(value)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(f"{field} must be a positive number") from None
+        if not math.isfinite(length) or length <= 0:
+            raise ValueError(f"{field} must be a positive number")
+
+
 def start_job(body: dict) -> dict:
+    validate_job_options(body)
     movie = (body.get("movie") or "").strip()
     if not movie:
         raise ValueError("a movie name is required")
