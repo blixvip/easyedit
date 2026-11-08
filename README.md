@@ -33,6 +33,8 @@ Local-first · no API keys · works with your AI bot</p>
   <a href="#community">Community</a>
 </p>
 
+<p align="center">🛠 <b>Built in the open</b>: 10 community contributors · 13 good first issues · we review PRs within 24h → <a href="https://github.com/blixvip/easyedit/issues/19">start here</a></p>
+
 ---
 
 Type a movie name and get a finished fan edit. It makes the kind that's all over social media: the film's best
@@ -98,6 +100,8 @@ npm install
 pip install -r requirements.txt
 python -m easyedit.doctor     # checks everything and tells you what to fix
 ```
+
+Or skip local setup: [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/blixvip/easyedit?quickstart=1) opens a ready-to-hack environment with Python, Node.js, FFmpeg and every dependency already installed.
 
 Connect an AI account so it can pick the scene, the quote and the song. One is enough, and there are no API keys:
 sign in to Claude Code (`claude auth login`) or Codex (`codex login`), or click **Connect** in the web UI. With no
@@ -253,6 +257,8 @@ AGENTS.md       the playbook for AI agents
 ## Contributors
 
 Thank you to everyone who has helped build easyedit. New here? Read [CONTRIBUTING.md](CONTRIBUTING.md) and pick one of the [good first issues](https://github.com/blixvip/easyedit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/blixvip/easyedit?quickstart=1)
 
 <a href="https://github.com/blixvip/easyedit/graphs/contributors"><img src="https://contrib.rocks/image?repo=blixvip/easyedit" alt="Contributors" /></a>
 

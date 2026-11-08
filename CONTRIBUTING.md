@@ -4,6 +4,24 @@
 
 Thanks for helping! Questions and ideas are welcome in the **[Discord](https://discord.gg/grokbot)**, and bugs go in [GitHub issues](https://github.com/blixvip/easyedit/issues/new/choose).
 
+## Your first PR in 10 minutes
+
+1. **Get the code.** Either click [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/blixvip/easyedit?quickstart=1), which installs everything for you so you can skip to step 3, or fork the repo and clone your fork:
+   ```sh
+   git clone https://github.com/<you>/easyedit.git && cd easyedit
+   ```
+2. **Install.** You need Python 3.10+, Node.js 22+ and FFmpeg (see [Setup](#setup)).
+   ```sh
+   npm install && pip install -r requirements.txt
+   python -m easyedit.doctor      # lists anything still missing
+   ```
+3. **Run the tests.** They take a few seconds and need no network, models or API keys.
+   ```sh
+   python -m unittest discover
+   ```
+4. **Pick an issue.** Choose a [good first issue](https://github.com/blixvip/easyedit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22). Each one lists the files to touch. Comment to claim it.
+5. **Open the PR.** Create a branch, make the fix, add a test, and run `python -m unittest discover` again. Then push and open a pull request that says `Fixes #<issue>`. We review within 24 hours.
+
 ## Finding something to work on
 
 - [Good first issues](https://github.com/blixvip/easyedit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are small and list the files to touch.
