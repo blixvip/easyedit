@@ -278,6 +278,20 @@ class JobInfoTest(unittest.TestCase):
             self.assertFalse(info["running"])
             fh.close.assert_called_once()
 
+    def test_unreadable_plan_falls_back_without_hiding_other_jobs(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            jobs_root = Path(tmp_dir).resolve()
+            for slug, plan in (("truncated-plan", '{"title": "Hal'), ("list-plan", "[]"),
+                               ("good-plan", '{"title": "Good Edit"}')):
+                (jobs_root / slug).mkdir()
+                (jobs_root / slug / "plan.json").write_text(plan, encoding="utf-8")
+
+            with mock.patch.object(web, "JOBS", jobs_root):
+                titles = {info["slug"]: info["title"] for info in (web.job_info(j) for j in web.job_dirs())}
+
+            self.assertEqual(titles, {"truncated-plan": "Truncated Plan", "list-plan": "List Plan",
+                                      "good-plan": "Good Edit"})
+
 
 class ThumbnailAccessibilityTest(unittest.TestCase):
     def test_gallery_markup_is_keyboard_and_screen_reader_friendly(self):
