@@ -23,7 +23,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from . import doctor
-from .util import JOBS, ROOT, probe, read_json, slugify
+from .util import JOBS, ROOT, final_output, probe, read_json, slugify
 
 PORT = int(os.environ.get("EASYEDIT_PORT", "4331"))
 WEB = Path(__file__).parent / "web"
@@ -128,8 +128,7 @@ def job_dirs() -> list[Path]:
 
 
 def output_of(job: Path) -> Path | None:
-    vids = [p for p in job.glob("*.mp4") if "preview" not in p.name]
-    return max(vids, key=lambda p: p.stat().st_mtime) if vids else None
+    return final_output(job)
 
 
 def thumb_of(job: Path) -> Path | None:
