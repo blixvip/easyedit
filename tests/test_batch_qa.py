@@ -29,15 +29,17 @@ def _run_qa(report):
 class QaAndCurateTest(unittest.TestCase):
     def test_flagged_rows_count_toward_review_threshold(self):
         report = "\n".join([
+            "300 men stood outside the station",
             "idx  id                        len   score face  flags",
             _shot_row(0, "*"),
             _shot_row(1, "x", "short"),
             _shot_row(2, "x", "title-card?"),
             _shot_row(3, " "),
             _shot_row(4, "*"),
+            _shot_row(5, "x", "short,repeat"),
             _shot_row(105, "x", "repeat"),
         ])
-        self.assertEqual(batch_edit._qa_shot_counts(report), (6, 3))
+        self.assertEqual(batch_edit._qa_shot_counts(report), (7, 3))
         self.assertEqual(_run_qa(report), "review")
 
     def test_picked_and_flagged_only_pool_is_not_mistaken_for_empty(self):
@@ -47,8 +49,16 @@ class QaAndCurateTest(unittest.TestCase):
             _shot_row(1, "x", "short"),
             _shot_row(105, "*"),
         ])
-        self.assertEqual(batch_edit._qa_shot_counts(report), (3, 1))
+        self.assertEqual(batch_edit._qa_shot_counts(report), (3, 0))
         self.assertEqual(_run_qa(report), "ok")
+
+    def test_numeric_quote_lines_before_table_are_not_counted(self):
+        report = "\\n".join([
+            "  300 men stood outside the station",
+            "idx  id                        len   score face  flags",
+            _shot_row(105, "x", "short"),
+        ])
+        self.assertEqual(batch_edit._qa_shot_counts(report), (1, 0))
 
     def test_report_without_shot_rows_requires_review(self):
         self.assertEqual(_run_qa("QUOTE: ready\nSHOTS: no analysis yet"), "review")
