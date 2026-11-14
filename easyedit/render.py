@@ -18,15 +18,31 @@ CLI = ROOT / "node_modules" / "hyperframes" / "bin" / "hyperframes.mjs"
 PARALLEL = int(os.environ.get("EASYEDIT_PARALLEL", "2"))
 
 
+FONT_MIN_BYTES = 64 * 1024
+FONT_DOWNLOAD_TIMEOUT = 60
+
+
 def ensure_fonts(dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for name, url in FONTS.items():
         cached = CACHE / "fonts" / name
-        if not cached.exists():
+        if not (cached.exists() and cached.stat().st_size >= FONT_MIN_BYTES):
             cached.parent.mkdir(parents=True, exist_ok=True)
             log(f"downloading font {name}")
-            urllib.request.urlretrieve(url, cached)
+            _download_font(url, cached)
         shutil.copy2(cached, dest / name)
+
+
+def _download_font(url: str, cached: Path) -> None:
+    part = cached.with_name(cached.name + ".part")
+    try:
+        with urllib.request.urlopen(url, timeout=FONT_DOWNLOAD_TIMEOUT) as resp:
+            with open(part, "wb") as out:
+                shutil.copyfileobj(resp, out)
+        os.replace(part, cached)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 def prepare(render_dir: Path, *, allow_missing_fonts: bool = False) -> None:
