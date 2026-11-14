@@ -10,6 +10,7 @@ re-run skips what already succeeded.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -59,6 +60,28 @@ def disk_check(slug: str) -> bool:
     return disk_gb() >= MIN_DISK_GB - 2.0
 
 
+def _qa_shot_counts(report: str) -> tuple[int, int]:
+    """Return the number of shot rows and the number marked as suspect.
+
+    The report's index and marker share the first four columns. Match the
+    complete row prefix instead of slicing a fixed number of characters so
+    picked, flagged, and three-digit shot indexes are all included.
+    """
+    pool = 0
+    bad = 0
+    for line in report.splitlines():
+        match = re.match(r"^\s*(\d+)([*x ])\s+(.*)$", line)
+        if not match:
+            continue
+        pool += 1
+        fields = match.group(3).split()
+        flags = fields[4] if len(fields) > 4 else ""
+        flag_set = set(flags.split(","))
+        if match.group(2) == "x" or {"title-card?", "repeat"} & flag_set:
+            bad += 1
+    return pool, bad
+
+
 def qa_and_curate(slug: str) -> str:
     """Run the text QA report; auto-apply the curate draft if the pool is clean.
 
@@ -69,9 +92,8 @@ def qa_and_curate(slug: str) -> str:
         return "review"
     rep = (job / "qa" / "report.txt").read_text(encoding="utf-8", errors="replace")
     heuristic = "!! AI writer unavailable" in rep  # quote needs eyes, but render anyway
-    pool = [ln for ln in rep.splitlines() if ln[:4].strip().isdigit()]
-    bad = sum(1 for ln in pool if " title-card?" in ln or " repeat" in ln)
-    if not pool or bad > max(2, len(pool) // 6):
+    pool, bad = _qa_shot_counts(rep)
+    if not pool or bad > max(2, pool // 6):
         return "review"
     if heuristic:
         return "render-flag"
