@@ -53,7 +53,7 @@ class QaAndCurateTest(unittest.TestCase):
         self.assertEqual(_run_qa(report), "ok")
 
     def test_numeric_quote_lines_before_table_are_not_counted(self):
-        report = "\\n".join([
+        report = "\n".join([
             "  300 men stood outside the station",
             "idx  id                        len   score face  flags",
             _shot_row(105, "x", "short"),
