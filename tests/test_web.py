@@ -277,6 +277,36 @@ class JobInfoTest(unittest.TestCase):
 
             self.assertFalse(info["running"])
             fh.close.assert_called_once()
+    
+    
+    def test_job_info_handles_invalid_plan_json(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            job = Path(tmp_dir) / "test-slug"
+            job.mkdir()
+
+            (job / "plan.json").write_text(
+                '{"title":',
+                encoding="utf-8"
+            )
+
+            info = web.job_info(job)
+
+            self.assertEqual(info["title"], "Test Slug")
+
+    def test_job_info_handles_non_dictionary_plan_json(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            job = Path(tmp_dir) / "test-slug"
+            job.mkdir()
+
+            (job / "plan.json").write_text(
+                '["invalid", "format"]',
+                encoding="utf-8"
+            )
+
+            info = web.job_info(job)
+
+            self.assertEqual(info["title"], "Test Slug")
+
 
 
 class ThumbnailAccessibilityTest(unittest.TestCase):
