@@ -69,7 +69,12 @@ def _qa_shot_counts(report: str) -> tuple[int, int]:
     """
     pool = 0
     bad = 0
+    in_shot_table = False
     for line in report.splitlines():
+        if not in_shot_table:
+            if re.match(r"^\s*idx\s+id\b", line):
+                in_shot_table = True
+            continue
         match = re.match(r"^\s*(\d+)([*x ])\s+(.*)$", line)
         if not match:
             continue
@@ -77,7 +82,7 @@ def _qa_shot_counts(report: str) -> tuple[int, int]:
         fields = match.group(3).split()
         flags = fields[4] if len(fields) > 4 else ""
         flag_set = set(flags.split(","))
-        if match.group(2) == "x" or {"title-card?", "repeat"} & flag_set:
+        if {"title-card?", "repeat"} & flag_set:
             bad += 1
     return pool, bad
 
