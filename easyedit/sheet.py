@@ -21,7 +21,7 @@ import cv2
 import numpy as np
 
 from . import shots
-from .util import JOBS, check_ffmpeg, probe, read_json, run, slugify
+from .util import JOBS, check_ffmpeg, final_output, probe, read_json, run, slugify
 
 TW, TH, COLS = 320, 180, 6
 
@@ -165,9 +165,9 @@ def main() -> None:
         raise SystemExit(f"no job at {job}")
     made = []
     if "--final" in sys.argv:
-        vids = sorted((p for p in job.glob("*.mp4") if "preview" not in p.name), key=lambda p: p.stat().st_mtime)
-        if vids:
-            made.append(video_sheet(vids[-1], job / "qa" / "final.jpg", 24))
+        video = final_output(job)
+        if video:
+            made.append(video_sheet(video, job / "qa" / "final.jpg", 24))
     elif "--report" in sys.argv:
         made.append(report(job))
     else:

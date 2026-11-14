@@ -7,9 +7,50 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from easyedit import web
+from easyedit import sheet, web
 
 SIGKILL = getattr(signal, "SIGKILL", 9)
+
+
+class FinalOutputTest(unittest.TestCase):
+    def test_title_containing_preview_keeps_its_final_video(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp) / "sneak-preview"
+            job.mkdir()
+            final = job / "sneak-preview.mp4"
+            final.touch()
+            (job / "sneak-preview-preview.mp4").touch()
+            self.assertEqual(web.output_of(job), final)
+
+    def test_custom_output_containing_preview_is_not_the_preview(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp) / "movie"
+            job.mkdir()
+            final = job / "review-preview-cut.mp4"
+            final.touch()
+            (job / "movie-preview.mp4").touch()
+            self.assertEqual(web.output_of(job), final)
+
+    def test_preview_only_has_no_final_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp) / "sneak-preview"
+            job.mkdir()
+            (job / "sneak-preview-preview.mp4").touch()
+            self.assertIsNone(web.output_of(job))
+
+    def test_final_sheet_uses_the_finished_video_for_a_preview_title(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            job = root / "sneak-preview"
+            job.mkdir()
+            final = job / "sneak-preview.mp4"
+            final.touch()
+            (job / "sneak-preview-preview.mp4").touch()
+            with mock.patch.object(sheet, "JOBS", root), \
+                    mock.patch.object(sheet.sys, "argv", ["easyedit.sheet", "Sneak Preview", "--final"]), \
+                    mock.patch.object(sheet, "video_sheet", return_value=None) as video_sheet:
+                sheet.main()
+            video_sheet.assert_called_once_with(final, job / "qa" / "final.jpg", 24)
 
 
 class FakeGroup:

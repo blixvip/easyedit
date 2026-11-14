@@ -34,6 +34,11 @@ def slugify(text: str) -> str:
     return s[:60] or "edit-" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
 
 
+def final_output(job: Path) -> Path | None:
+    videos = (p for p in job.glob("*.mp4") if p.name != f"{job.name}-preview.mp4")
+    return max(videos, key=lambda p: p.stat().st_mtime, default=None)
+
+
 def need(binary: str) -> str:
     path = shutil.which(binary)
     if not path:
