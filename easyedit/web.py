@@ -200,8 +200,22 @@ def captioned_line(job: Path) -> str:
 
 
 def job_info(job: Path) -> dict:
+    
     out = output_of(job)
-    plan = read_json(job / "plan.json") if (job / "plan.json").exists() else {}
+
+    plan = {}
+    plan_path = job / "plan.json"
+
+    try:
+        if plan_path.exists():
+            loaded_plan = read_json(plan_path)
+
+            if isinstance(loaded_plan, dict):
+                plan = loaded_plan
+
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        plan = {}
+
     run = _runs.get(job.name)
     running = bool(run and run["proc"].poll() is None)
     if run and not running:
